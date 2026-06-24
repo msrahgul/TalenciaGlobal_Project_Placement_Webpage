@@ -66,24 +66,51 @@
   --animate-float: float 6s ease-in-out infinite;
 
   @keyframes glow {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
-    50%       { box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
+
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+    }
+
+    50% {
+      box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+    }
   }
 
   @keyframes meshShift {
-    0%   { background-position: 0% 50%; }
-    50%  { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    0% {
+      background-position: 0% 50%;
+    }
+
+    50% {
+      background-position: 100% 50%;
+    }
+
+    100% {
+      background-position: 0% 50%;
+    }
   }
 
   @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50%       { transform: translateY(-6px); }
+
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+
+    50% {
+      transform: translateY(-6px);
+    }
   }
 
   @keyframes shimmer {
-    0%   { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+    0% {
+      background-position: -200% 0;
+    }
+
+    100% {
+      background-position: 200% 0;
+    }
   }
 }
 
@@ -144,7 +171,8 @@
     scroll-behavior: smooth;
   }
 
-  html, body {
+  html,
+  body {
     font-family: var(--font-body);
     background-color: var(--color-background);
     color: var(--color-foreground);
@@ -152,7 +180,12 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-heading);
     letter-spacing: -0.02em;
   }
@@ -164,10 +197,10 @@
 .mesh-bg {
   background-color: var(--background);
   background-image:
-    radial-gradient(ellipse 80% 60% at 20% 10%,  rgba(59, 130, 246, 0.12) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 80% 90%,  rgba(139, 92, 246, 0.10) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 60% 40%,  rgba(16, 185, 129, 0.05) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 60% at 10% 80%,  rgba(245, 158, 11, 0.04) 0%, transparent 60%);
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(59, 130, 246, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 90%, rgba(139, 92, 246, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 60% 40%, rgba(16, 185, 129, 0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 10% 80%, rgba(245, 158, 11, 0.04) 0%, transparent 60%);
   background-size: 200% 200%;
   animation: meshShift 20s ease-in-out infinite alternate;
 }
@@ -181,8 +214,9 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: var(--shadow-bento);
   transition: box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-              transform   0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
+
 .bento-card:hover {
   border-color: rgba(255, 255, 255, 0.12);
   box-shadow: var(--shadow-bento-hover);
@@ -212,6 +246,7 @@
   box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.2);
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
+
 .glass-search:focus-within {
   border-color: rgba(59, 130, 246, 0.45) !important;
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15), 0 8px 24px -4px rgba(0, 0, 0, 0.5);
@@ -230,13 +265,29 @@
 /* ──────────────────────────────────────────────
    SCROLLBAR
    ────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(37, 99, 235, 0.18); border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(37, 99, 235, 0.32); }
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(37, 99, 235, 0.18);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 99, 235, 0.32);
+}
 
 /* Thin scrollbar for Firefox */
-* { scrollbar-width: thin; scrollbar-color: rgba(37, 99, 235, 0.18) transparent; }
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(37, 99, 235, 0.18) transparent;
+}
 
 /* ──────────────────────────────────────────────
    COMPANY CARD — focus ring using category color
@@ -248,10 +299,60 @@ button:focus-visible {
 
 /* Shimmer sweep utility */
 @keyframes shineSweep {
-  0%   { transform: translateX(-100%) skewX(-12deg); opacity: 0; }
-  15%  { opacity: 1; }
-  85%  { opacity: 1; }
-  100% { transform: translateX(200%) skewX(-12deg); opacity: 0; }
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  85% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+    opacity: 0;
+  }
+}
+
+/* ──────────────────────────────────────────────
+   COMPANY CARD — GPU-composited hover
+   Only transform + box-shadow are composited on GPU.
+   background-color changes are repaint, so we avoid
+   animating them. The border color transition is cheap.
+   ────────────────────────────────────────────── */
+.card-hover {
+  /* Prime the GPU layer before any interaction */
+  transform: translateZ(0);
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.22s ease;
+  background: linear-gradient(135deg,
+      rgba(15, 23, 42, 0.70) 0%,
+      rgba(3, 7, 18, 0.82) 100%);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px) translateZ(0);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.48), 0 0 0 1px rgba(148, 163, 184, 0.07);
+  background: linear-gradient(135deg,
+      rgba(15, 23, 42, 0.90) 0%,
+      rgba(3, 7, 18, 0.96) 100%);
+}
+
+.card-hover:active {
+  transform: translateY(-1px) scale(0.99) translateZ(0);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+/* Grid layout containment — prevents card hovers from
+   triggering ancestor reflows during scroll             */
+.company-grid {
+  contain: layout style;
 }
 
 /* ──────────────────────────────────────────────

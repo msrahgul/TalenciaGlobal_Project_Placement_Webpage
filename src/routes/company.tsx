@@ -83,7 +83,7 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
 
     const particles: Particle[] = Array.from({ length: 32 }).map((_, i) => {
       const leftPercent = Math.random() * 100;
-      
+
       let size = 2;
       if (i < 16) {
         size = 3.5;
@@ -228,11 +228,11 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
         // Outer pulsating circle
         const pulse = 1 + Math.sin(time * p.pulseSpeed + p.pulsePhase) * 0.55;
         const outerRadius = p.size * 3.5 * pulse;
-        
+
         ctx.shadowBlur = 0; // No shadow for faint outer rings
         ctx.beginPath();
         ctx.arc(p.drawX, p.drawY, outerRadius, 0, Math.PI * 2);
-        
+
         // Parse raw color to modify alpha
         const outerColor = p.color
           .replace("0.45", (0.12 + 0.15 * p.activeFactor).toFixed(2))
@@ -244,7 +244,7 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
         // Inner glowing core
         ctx.beginPath();
         ctx.arc(p.drawX, p.drawY, p.size, 0, Math.PI * 2);
-        
+
         ctx.shadowBlur = 8 + 8 * p.activeFactor;
         ctx.shadowColor = p.color;
         ctx.fillStyle = p.color.replace("0.45", "0.85").replace("0.55", "0.95");
@@ -305,7 +305,7 @@ function CompanyLayout() {
         className="sticky top-0 z-30 border-b border-slate-900/60 bg-slate-950/70 backdrop-blur-xl shadow-lg relative"
       >
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          
+
           {/* Left: Back button + Logo + Company details */}
           <div className="flex items-center gap-3.5 min-w-0">
             {/* Back Button */}
@@ -316,7 +316,7 @@ function CompanyLayout() {
             >
               <ChevronLeft className="h-5 w-5" />
             </Link>
-            
+
             {/* Logo */}
             <CompanyLogo
               name={selected.companyName}
@@ -324,7 +324,7 @@ function CompanyLayout() {
               size={40}
               className="shrink-0 rounded-xl border border-slate-850/65 bg-slate-900/40 p-0.5"
             />
-            
+
             {/* Titles */}
             <div className="min-w-0">
               {/* Wrapped title without truncate for full visibility */}
@@ -342,22 +342,20 @@ function CompanyLayout() {
             <div className="flex bg-slate-900/40 p-1 border border-slate-850/80 rounded-full">
               <Link
                 to="/company/intelligence"
-                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                  pathname === "/company/intelligence"
+                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${pathname === "/company/intelligence"
                     ? "bg-blue-500/15 text-blue-400 border border-blue-500/10 shadow-[0_2px_8px_-2px_rgba(59,130,246,0.25)] font-bold"
                     : "text-slate-400 hover:text-slate-200 border border-transparent"
-                }`}
+                  }`}
               >
                 <Building2 className="h-3.5 w-3.5" />
                 <span>Intelligence</span>
               </Link>
               <Link
                 to="/company/skills"
-                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                  pathname === "/company/skills"
+                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${pathname === "/company/skills"
                     ? "bg-blue-500/15 text-blue-400 border border-blue-500/10 shadow-[0_2px_8px_-2px_rgba(59,130,246,0.25)] font-bold"
                     : "text-slate-400 hover:text-slate-200 border border-transparent"
-                }`}
+                  }`}
               >
                 <GraduationCap className="h-3.5 w-3.5" />
                 <span>Skills</span>

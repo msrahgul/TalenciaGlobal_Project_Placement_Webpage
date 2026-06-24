@@ -347,91 +347,25 @@ function CompanyIntelligencePage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [profile]);
 
+  // When activeIdx changes (driven by right-panel scroll spy OR a click),
+  // scroll both the mobile tab bar AND the desktop sidebar to reveal the active item.
+  // The sidebar does NOT drive the right panel — only clicks (scrollToSection) do that.
   useEffect(() => {
-    // Scroll mobile tabs
+    // Mobile: scroll the horizontal tab strip
     const mobileEl = tabsRef.current?.querySelector<HTMLButtonElement>(
       `[data-tab-idx="${activeIdx}"]`,
     );
     mobileEl?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-  }, [activeIdx]);
 
-  // Synchronized scrolling between window and left sidebar (desktop) with smooth LERP damping
-  useEffect(() => {
-    if (!profile) return;
+    // Desktop: scroll the left sidebar to keep the active nav item visible
     const sidebar = sidebarRef.current;
-    if (!sidebar) return;
-
-    let syncTimeout: number | null = null;
-    let activeSource: "window" | "sidebar" | null = null;
-
-    const clearSync = () => {
-      activeSource = null;
-    };
-
-    const targetSidebarTop = { current: sidebar.scrollTop };
-    const currentSidebarTop = { current: sidebar.scrollTop };
-    let animationFrameId: number;
-
-    const smoothScrollLoop = () => {
-      if (activeSource === "window") {
-        const diff = targetSidebarTop.current - currentSidebarTop.current;
-        if (Math.abs(diff) > 0.5) {
-          currentSidebarTop.current += diff * 0.15; // Smooth LERP speed
-          sidebar.scrollTop = currentSidebarTop.current;
-        } else {
-          currentSidebarTop.current = targetSidebarTop.current;
-          sidebar.scrollTop = currentSidebarTop.current;
-        }
-      }
-      animationFrameId = requestAnimationFrame(smoothScrollLoop);
-    };
-
-    animationFrameId = requestAnimationFrame(smoothScrollLoop);
-
-    const handleWindowScroll = () => {
-      if (activeSource === "sidebar") return;
-      activeSource = "window";
-
-      const windowScrollable = document.documentElement.scrollHeight - window.innerHeight;
-      const sidebarScrollable = sidebar.scrollHeight - sidebar.clientHeight;
-      if (windowScrollable > 0 && sidebarScrollable > 0) {
-        const pct = window.scrollY / windowScrollable;
-        targetSidebarTop.current = pct * sidebarScrollable;
-      }
-
-      if (syncTimeout) window.clearTimeout(syncTimeout);
-      syncTimeout = window.setTimeout(clearSync, 100);
-    };
-
-    const handleSidebarScroll = () => {
-      if (activeSource === "window") return;
-      activeSource = "sidebar";
-
-      // Sync refs when directly scrolling the sidebar
-      currentSidebarTop.current = sidebar.scrollTop;
-      targetSidebarTop.current = sidebar.scrollTop;
-
-      const windowScrollable = document.documentElement.scrollHeight - window.innerHeight;
-      const sidebarScrollable = sidebar.scrollHeight - sidebar.clientHeight;
-      if (windowScrollable > 0 && sidebarScrollable > 0) {
-        const pct = sidebar.scrollTop / sidebarScrollable;
-        window.scrollTo(window.scrollX, pct * windowScrollable);
-      }
-
-      if (syncTimeout) window.clearTimeout(syncTimeout);
-      syncTimeout = window.setTimeout(clearSync, 100);
-    };
-
-    window.addEventListener("scroll", handleWindowScroll, { passive: true });
-    sidebar.addEventListener("scroll", handleSidebarScroll, { passive: true });
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener("scroll", handleWindowScroll);
-      sidebar.removeEventListener("scroll", handleSidebarScroll);
-      if (syncTimeout) window.clearTimeout(syncTimeout);
-    };
-  }, [profile]);
+    if (sidebar) {
+      const activeBtn = sidebar.querySelector<HTMLButtonElement>(
+        `[data-tab-idx="${activeIdx}"]`
+      );
+      activeBtn?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [activeIdx]);
 
   const scrollToSection = (i: number) => {
     const el = sectionRefs.current[i];

@@ -48,268 +48,278 @@ function domain(url?: string | null) {
 
 const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const mouseRef = useRef({ x: -1000, y: -1000 });
+  const mouseRef = useRef({ x: -9999, y: -9999 });
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext("2d");
+    // Use willReadFrequently: false for pure draw-only canvas (no getImageData)
+    const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
-    let animationFrameId: number;
-    let dpr = window.devicePixelRatio || 1;
-    let width = window.innerWidth;
-    let height = window.innerHeight;
+    let rafId: number;
+    let paused = false;
+    // Cap DPR at 1.5 — halves the fill area on retina screens with minimal quality loss
+    let dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    let W = window.innerWidth;
+    let H = window.innerHeight;
 
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    ctx.scale(dpr, dpr);
-
-    // Re-initialize width and height on resize
-    const handleResize = () => {
-      if (!canvas) return;
-      dpr = window.devicePixelRatio || 1;
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+    const resize = () => {
+      dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = Math.floor(W * dpr);
+      canvas.height = Math.floor(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
-    window.addEventListener("resize", handleResize);
+    resize();
 
-    const colors = [
-      "rgba(59, 130, 246, 0.45)",  // blue
-      "rgba(139, 92, 246, 0.45)",  // violet
-      "rgba(16, 185, 129, 0.45)",  // emerald
-      "rgba(245, 158, 11, 0.45)",  // amber
-      "rgba(148, 163, 184, 0.55)"  // slate
+    // ── Throttled mouse handler: skip updates faster than 16ms (1 frame)
+    let lastMouseTime = 0;
+    const onMouse = (e: MouseEvent) => {
+      const now = performance.now();
+      if (now - lastMouseTime < 16) return;
+      lastMouseTime = now;
+      mouseRef.current = { x: e.clientX, y: e.clientY };
+    };
+    const onLeave = () => { mouseRef.current = { x: -9999, y: -9999 }; };
+
+    // ── Page Visibility API: pause RAF when tab is hidden
+    const onVisibility = () => { paused = document.hidden; };
+
+    // ── Pause canvas during scroll to free up compositor thread
+    let scrollTimer = 0;
+    const onScroll = () => {
+      paused = true;
+      clearTimeout(scrollTimer);
+      scrollTimer = window.setTimeout(() => { paused = false; }, 120);
+    };
+
+    window.addEventListener("resize", resize, { passive: true });
+    window.addEventListener("mousemove", onMouse, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("mouseleave", onLeave);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    // ── Pre-computed particle colors (avoid string replace every frame)
+    const COLORS = [
+      { outer: "rgba(59,130,246,0.18)", fill: "rgba(59,130,246,0.75)" },
+      { outer: "rgba(139,92,246,0.18)", fill: "rgba(139,92,246,0.75)" },
+      { outer: "rgba(16,185,129,0.18)", fill: "rgba(16,185,129,0.75)" },
+      { outer: "rgba(245,158,11,0.15)", fill: "rgba(245,158,11,0.75)" },
+      { outer: "rgba(148,163,184,0.15)", fill: "rgba(148,163,184,0.70)" },
     ];
 
-    interface Particle {
-      leftPercent: number;
-      y: number;
-      size: number;
-      speed: number;
-      color: string;
-      swayAmount: number;
-      swaySpeed: number;
-      swayPhase: number;
-      pulseSpeed: number;
-      pulsePhase: number;
-      offsetX: number;
-      offsetY: number;
-      activeFactor: number;
-      drawX: number;
-      drawY: number;
-      mouseDist: number;
-    }
-
-    const particles: Particle[] = Array.from({ length: 32 }).map((_, i) => {
-      const leftPercent = Math.random() * 100;
-      
-      let size = 2;
-      if (i < 16) {
-        size = 3.5;
-      } else {
-        size = Math.random() < 0.3 ? 3.5 : Math.random() < 0.6 ? 2.5 : 1.5;
-      }
-
-      const duration = 16 + Math.random() * 22; // 16s to 38s
-      const delay = -Math.random() * duration;
-
-      const color = colors[i % colors.length];
-      const swayAmount = 30 + Math.random() * 50;
-
-      // Vertical starting position (distribute randomly across the screen)
-      const startingYFraction = Math.random();
-      const speed = (height + 150) / (duration * 60);
-      const startingY = height + 50 - startingYFraction * (height + 100);
-
+    // ── Reduced particle count: 18 instead of 32
+    const particles = Array.from({ length: 18 }, (_, i) => {
+      const dur = 18 + Math.random() * 24;
+      const yFrac = Math.random();
       return {
-        leftPercent,
-        y: startingY,
-        size,
-        speed,
-        color,
-        swayAmount,
-        swaySpeed: 0.01 + Math.random() * 0.01,
-        swayPhase: Math.random() * Math.PI * 2,
-        pulseSpeed: 0.02 + Math.random() * 0.02,
-        pulsePhase: Math.random() * Math.PI * 2,
-        offsetX: 0,
-        offsetY: 0,
-        activeFactor: 0,
-        drawX: 0,
-        drawY: 0,
-        mouseDist: 10000,
+        lp: Math.random() * 100,
+        y: H + 50 - yFrac * (H + 100),
+        sz: i < 8 ? 2.5 : (Math.random() < 0.4 ? 2 : 1.5),
+        spd: (H + 150) / (dur * 60),
+        col: COLORS[i % COLORS.length],
+        swA: 25 + Math.random() * 40,
+        swS: 0.007 + Math.random() * 0.007,
+        swP: Math.random() * Math.PI * 2,
+        ox: 0, oy: 0,
+        af: 0,
+        dx: 0, dy: 0,
+        md: 9999,
       };
     });
 
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseRef.current = { x: e.clientX, y: e.clientY };
-    };
+    let t = 0;
 
-    const handleMouseLeave = () => {
-      mouseRef.current = { x: -1000, y: -1000 };
-    };
+    const draw = () => {
+      // When paused just re-queue without touching canvas (preserves last frame)
+      if (paused) {
+        rafId = requestAnimationFrame(draw);
+        return;
+      }
 
-    window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    document.addEventListener("mouseleave", handleMouseLeave);
-    document.addEventListener("mouseenter", handleMouseMove);
+      t += 0.4;
+      ctx.clearRect(0, 0, W, H);
 
-    let time = 0;
+      const mx = mouseRef.current.x;
+      const my = mouseRef.current.y;
+      const mouseActive = mx > -500;
 
-    const animate = () => {
-      time += 0.5;
-      ctx.clearRect(0, 0, width, height);
+      // ── Update positions & mouse interaction
+      for (const p of particles) {
+        p.y -= p.spd;
+        if (p.y < -50) { p.y = H + 50; p.lp = Math.random() * 100; }
 
-      const mX = mouseRef.current.x;
-      const mY = mouseRef.current.y;
+        const tx = (p.lp * W) / 100 + Math.sin(t * p.swS + p.swP) * p.swA;
 
-      // Update particle positions and mouse distance
-      particles.forEach((p) => {
-        // Rise up
-        p.y -= p.speed;
-        if (p.y < -50) {
-          p.y = height + 50;
-          p.leftPercent = Math.random() * 100;
-        }
-
-        // Base coordinates before interaction
-        const baseX = (p.leftPercent * width) / 100;
-        const swayX = Math.sin(time * p.swaySpeed + p.swayPhase) * p.swayAmount;
-        const targetX = baseX + swayX;
-        const targetY = p.y;
-
-        // Interaction with mouse
-        if (mX > -500 && mY > -500) {
-          const dx = targetX - mX;
-          const dy = targetY - mY;
+        if (mouseActive) {
+          const dx = tx - mx, dy = p.y - my;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          p.mouseDist = dist;
-
-          if (dist < 200) {
-            const force = (200 - dist) / 200;
-            // Push away locally
-            const pushX = (dx / (dist || 1)) * force * 45;
-            const pushY = (dy / (dist || 1)) * force * 45;
-
-            p.offsetX += (pushX - p.offsetX) * 0.12;
-            p.offsetY += (pushY - p.offsetY) * 0.12;
-            p.activeFactor += (1 - p.activeFactor) * 0.12;
+          p.md = dist;
+          if (dist < 160) {
+            const f = (160 - dist) / 160;
+            p.ox += ((dx / (dist || 1)) * f * 36 - p.ox) * 0.1;
+            p.oy += ((dy / (dist || 1)) * f * 36 - p.oy) * 0.1;
+            p.af += (1 - p.af) * 0.1;
           } else {
-            p.offsetX += (0 - p.offsetX) * 0.08;
-            p.offsetY += (0 - p.offsetY) * 0.08;
-            p.activeFactor += (0 - p.activeFactor) * 0.08;
+            p.ox *= 0.9; p.oy *= 0.9; p.af *= 0.9;
           }
         } else {
-          p.mouseDist = 10000;
-          p.offsetX += (0 - p.offsetX) * 0.08;
-          p.offsetY += (0 - p.offsetY) * 0.08;
-          p.activeFactor += (0 - p.activeFactor) * 0.08;
+          p.md = 9999; p.ox *= 0.9; p.oy *= 0.9; p.af *= 0.9;
         }
+        p.dx = tx + p.ox;
+        p.dy = p.y + p.oy;
+      }
 
-        p.drawX = targetX + p.offsetX;
-        p.drawY = targetY + p.offsetY;
-      });
-
-      // Draw local connection lines (neural network web near mouse)
-      if (mX > -500 && mY > -500) {
-        ctx.shadowBlur = 0; // Turn off shadows for line rendering speed
+      // ── Connection lines (only near mouse, squared-distance check avoids sqrt)
+      if (mouseActive) {
+        ctx.lineWidth = 0.7;
         for (let i = 0; i < particles.length; i++) {
-          const p1 = particles[i];
-          if (p1.mouseDist > 200) continue;
-
+          const a = particles[i];
+          if (a.md > 160) continue;
           for (let j = i + 1; j < particles.length; j++) {
-            const p2 = particles[j];
-            if (p2.mouseDist > 200) continue;
-
-            const dx = p1.drawX - p2.drawX;
-            const dy = p1.drawY - p2.drawY;
-            const distBetween = Math.sqrt(dx * dx + dy * dy);
-
-            if (distBetween < 120) {
-              const alpha1 = (200 - p1.mouseDist) / 200;
-              const alpha2 = (200 - p2.mouseDist) / 200;
-              const alphaDist = (120 - distBetween) / 120;
-              // Combined connection opacity
-              const finalAlpha = alpha1 * alpha2 * alphaDist * 0.25;
-
+            const b = particles[j];
+            if (b.md > 160) continue;
+            const ex = a.dx - b.dx, ey = a.dy - b.dy;
+            const ed2 = ex * ex + ey * ey;
+            if (ed2 < 12100) { // < 110px
+              const alpha =
+                ((160 - a.md) / 160) *
+                ((160 - b.md) / 160) *
+                (1 - ed2 / 12100) * 0.16;
               ctx.beginPath();
-              ctx.moveTo(p1.drawX, p1.drawY);
-              ctx.lineTo(p2.drawX, p2.drawY);
-              ctx.strokeStyle = `rgba(59, 130, 246, ${finalAlpha})`;
-              ctx.lineWidth = 1;
+              ctx.moveTo(a.dx, a.dy);
+              ctx.lineTo(b.dx, b.dy);
+              ctx.strokeStyle = `rgba(99,130,246,${alpha.toFixed(3)})`;
               ctx.stroke();
             }
           }
         }
       }
 
-      // Draw particles
-      particles.forEach((p) => {
-        // Outer pulsating circle
-        const pulse = 1 + Math.sin(time * p.pulseSpeed + p.pulsePhase) * 0.55;
-        const outerRadius = p.size * 3.5 * pulse;
-        
-        ctx.shadowBlur = 0; // No shadow for faint outer rings
+      // ── Draw particles — NO ctx.shadowBlur (biggest perf win)
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = "transparent";
+
+      for (const p of particles) {
+        // Outer ring (cheap: just a stroked circle)
         ctx.beginPath();
-        ctx.arc(p.drawX, p.drawY, outerRadius, 0, Math.PI * 2);
-        
-        // Parse raw color to modify alpha
-        const outerColor = p.color
-          .replace("0.45", (0.12 + 0.15 * p.activeFactor).toFixed(2))
-          .replace("0.55", (0.15 + 0.15 * p.activeFactor).toFixed(2));
-        ctx.strokeStyle = outerColor;
-        ctx.lineWidth = 1;
+        ctx.arc(p.dx, p.dy, p.sz * 3 + p.af * p.sz * 1.5, 0, Math.PI * 2);
+        ctx.strokeStyle = p.col.outer;
+        ctx.lineWidth = 0.8;
         ctx.stroke();
 
-        // Inner glowing core
+        // Inner filled dot
         ctx.beginPath();
-        ctx.arc(p.drawX, p.drawY, p.size, 0, Math.PI * 2);
-        
-        ctx.shadowBlur = 8 + 8 * p.activeFactor;
-        ctx.shadowColor = p.color;
-        ctx.fillStyle = p.color.replace("0.45", "0.85").replace("0.55", "0.95");
+        ctx.arc(p.dx, p.dy, p.sz, 0, Math.PI * 2);
+        ctx.fillStyle = p.col.fill;
         ctx.fill();
-      });
+      }
 
-      animationFrameId = requestAnimationFrame(animate);
+      rafId = requestAnimationFrame(draw);
     };
 
-    animate();
+    draw();
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseleave", handleMouseLeave);
+      cancelAnimationFrame(rafId);
+      clearTimeout(scrollTimer);
+      window.removeEventListener("resize", resize);
+      window.removeEventListener("mousemove", onMouse);
+      window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("mouseleave", onLeave);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
 
   return (
     <canvas
       ref={canvasRef}
-      className="pointer-events-none fixed inset-0 z-0 select-none overflow-hidden"
+      className="pointer-events-none fixed inset-0 z-0 select-none"
     />
   );
 });
 
 /* ═══════════════════════════════════════════════════════
-   CLEAN COMPANY CARD — minimal, professional
+   CATEGORY → ACCENT COLOR MAPPING
+   Maps each category to a border stripe + badge palette
+   matching the stat-card accent stripe design language.
    ═══════════════════════════════════════════════════════ */
-const getCardStyles = () => {
-  const baseStyles = "border-slate-800/80 bg-slate-900/40";
-  const hoverStyles = "hover:bg-gradient-to-b hover:from-slate-900/95 hover:to-slate-950/90 hover:border-slate-500/80 hover:shadow-[0_0_30px_rgba(148,163,184,0.25)]";
-  return `${baseStyles} ${hoverStyles}`;
+type CardAccent = {
+  stripe: string;      // gradient for the top stripe
+  hoverBorder: string; // border color class on hover
+  badgeBg: string;     // badge background
+  badgeBorder: string; // badge border
+  badgeText: string;   // badge text color
+};
+
+const getCategoryAccent = (category?: string | null): CardAccent => {
+  const cat = (category ?? "").toLowerCase();
+  if (cat.includes("finance") || cat.includes("banking") || cat.includes("fintech"))
+    return {
+      stripe: "from-transparent via-emerald-500/55 to-transparent",
+      hoverBorder: "hover:border-emerald-500/30",
+      badgeBg: "bg-emerald-500/10 group-hover:bg-emerald-500/20",
+      badgeBorder: "border-emerald-500/20 group-hover:border-emerald-400/30",
+      badgeText: "text-emerald-400 group-hover:text-emerald-300",
+    };
+  if (cat.includes("consult"))
+    return {
+      stripe: "from-transparent via-amber-500/55 to-transparent",
+      hoverBorder: "hover:border-amber-500/30",
+      badgeBg: "bg-amber-500/10 group-hover:bg-amber-500/20",
+      badgeBorder: "border-amber-500/20 group-hover:border-amber-400/30",
+      badgeText: "text-amber-400 group-hover:text-amber-300",
+    };
+  if (cat.includes("health") || cat.includes("pharma") || cat.includes("medic"))
+    return {
+      stripe: "from-transparent via-rose-500/55 to-transparent",
+      hoverBorder: "hover:border-rose-500/30",
+      badgeBg: "bg-rose-500/10 group-hover:bg-rose-500/20",
+      badgeBorder: "border-rose-500/20 group-hover:border-rose-400/30",
+      badgeText: "text-rose-400 group-hover:text-rose-300",
+    };
+  if (cat.includes("educat") || cat.includes("edtech") || cat.includes("learn"))
+    return {
+      stripe: "from-transparent via-orange-500/55 to-transparent",
+      hoverBorder: "hover:border-orange-500/30",
+      badgeBg: "bg-orange-500/10 group-hover:bg-orange-500/20",
+      badgeBorder: "border-orange-500/20 group-hover:border-orange-400/30",
+      badgeText: "text-orange-400 group-hover:text-orange-300",
+    };
+  if (cat.includes("manufactur") || cat.includes("auto") || cat.includes("aerospace"))
+    return {
+      stripe: "from-transparent via-cyan-500/55 to-transparent",
+      hoverBorder: "hover:border-cyan-500/30",
+      badgeBg: "bg-cyan-500/10 group-hover:bg-cyan-500/20",
+      badgeBorder: "border-cyan-500/20 group-hover:border-cyan-400/30",
+      badgeText: "text-cyan-400 group-hover:text-cyan-300",
+    };
+  if (cat.includes("e-comm") || cat.includes("ecomm") || cat.includes("retail") || cat.includes("logistic"))
+    return {
+      stripe: "from-transparent via-violet-500/55 to-transparent",
+      hoverBorder: "hover:border-violet-500/30",
+      badgeBg: "bg-violet-500/10 group-hover:bg-violet-500/20",
+      badgeBorder: "border-violet-500/20 group-hover:border-violet-400/30",
+      badgeText: "text-violet-400 group-hover:text-violet-300",
+    };
+  // Default: tech / software / IT
+  return {
+    stripe: "from-transparent via-blue-500/55 to-transparent",
+    hoverBorder: "hover:border-blue-500/30",
+    badgeBg: "bg-blue-500/10 group-hover:bg-blue-500/20",
+    badgeBorder: "border-blue-500/20 group-hover:border-blue-400/30",
+    badgeText: "text-blue-400 group-hover:text-blue-300",
+  };
 };
 
 const CompanyCard = memo(function CompanyCard({
   company, onSelect, index,
 }: { company: CompanySummary; onSelect: (c: CompanySummary) => void; index: number }) {
-  const growth    = company.yoy_growth_rate ?? "";
-  const neg       = growth.trim().startsWith("-");
+  const growth = company.yoy_growth_rate ?? "";
+  const neg = growth.trim().startsWith("-");
   const webDomain = domain(company.website_url);
 
   const primaryLocation = useMemo(() => {
@@ -318,100 +328,98 @@ const CompanyCard = memo(function CompanyCard({
     return parts[0].trim();
   }, [company.office_locations]);
 
-  const shortCategory = useMemo(() => {
-    return catShortName(company.category);
-  }, [company.category]);
+  const shortCategory = useMemo(() => catShortName(company.category), [company.category]);
+  const accent = useMemo(() => getCategoryAccent(company.category), [company.category]);
 
   return (
-    <motion.button
-      type="button"
-      onClick={() => onSelect(company)}
+    <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: index * 0.03, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -6, scale: 1.015 }}
-      whileTap={{ scale: 0.985 }}
-      className={`group flex flex-col rounded-2xl text-left transition-[background-color,border-color,box-shadow] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-700 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 p-5 min-h-[230px] ${getCardStyles()}`}
+      transition={{ duration: 0.35, delay: Math.min(index * 0.02, 0.4), ease: [0.22, 1, 0.36, 1] }}
     >
-      {/* ── Top Header: Logo + Category Badge ── */}
-      <div className="flex items-start justify-between gap-3 w-full">
-        <CompanyLogo
-          name={company.name}
-          logoUrl={company.logo_url}
-          website={company.website_url}
-          size={44}
-          className="shrink-0 rounded-xl border border-slate-800 bg-slate-900/60 p-0.5"
-        />
-        {shortCategory && (
-          <span className="inline-flex items-center rounded-lg bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-400 group-hover:bg-blue-500/15 group-hover:border-blue-500/30 transition-all">
-            {shortCategory}
-          </span>
-        )}
-      </div>
+      <button
+        type="button"
+        onClick={() => onSelect(company)}
+        className={`group relative overflow-hidden flex flex-col w-full rounded-2xl text-left border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 p-6 min-h-[248px] card-hover ${accent.hoverBorder}`}
+      >
+        {/* ── Category-colored top accent stripe (matches stat card design) ── */}
+        <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r ${accent.stripe}`} />
 
-      {/* ── Title & Location ── */}
-      <div className="mt-4 flex-1 min-w-0">
-        <h3 className="truncate font-heading text-[15px] font-bold leading-snug text-slate-100 group-hover:text-white transition-colors">
-          {company.name}
-        </h3>
-        
-        {primaryLocation ? (
-          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500 group-hover:text-slate-400 transition-colors">
-            <MapPin className="h-3 w-3 shrink-0 text-slate-500 group-hover:text-blue-400 transition-colors" />
-            <span className="truncate">{primaryLocation}</span>
-          </div>
-        ) : (
-          <div className="mt-1 text-[11px] text-slate-600 italic">Location unlisted</div>
-        )}
-      </div>
-
-      {/* ── Stats Grid (Bento style) ── */}
-      <div className="grid grid-cols-2 gap-2 mt-4 w-full">
-        {/* Employees */}
-        <div className="flex items-center gap-2 rounded-xl bg-slate-950/40 border border-slate-900/60 px-3 py-2">
-          <Users className="h-3.5 w-3.5 shrink-0 text-slate-500 group-hover:text-slate-350 transition-colors" />
-          <span className="truncate text-[11px] font-semibold text-slate-400 group-hover:text-slate-200 transition-colors">
-            {!nil(company.employee_size) ? company.employee_size.replace(/\s+/g, "") : "—"}
-          </span>
+        {/* ── Top Header: Logo + Category Badge ── */}
+        <div className="flex items-start justify-between gap-3 w-full">
+          <CompanyLogo
+            name={company.name}
+            logoUrl={company.logo_url}
+            website={company.website_url}
+            size={44}
+            className="shrink-0 rounded-xl border border-slate-800/80 bg-slate-900/80 p-0.5"
+          />
+          {shortCategory && (
+            <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider transition-all duration-200 ${accent.badgeBg} ${accent.badgeBorder} ${accent.badgeText}`}>
+              {shortCategory}
+            </span>
+          )}
         </div>
 
-        {/* Growth */}
-        <div className={`flex items-center gap-2 rounded-xl border px-3 py-2 ${
-          nil(growth)
-            ? "bg-slate-950/40 border-slate-900/60"
-            : neg
-              ? "bg-red-500/5 border-red-500/10 text-red-400"
-              : "bg-emerald-500/5 border-emerald-500/10 text-emerald-400"
-        }`}>
-          {nil(growth) ? (
-            <TrendingUp className="h-3.5 w-3.5 shrink-0 text-slate-600" />
-          ) : neg ? (
-            <TrendingDown className="h-3.5 w-3.5 shrink-0" />
+        {/* ── Title & Location ── */}
+        <div className="mt-4 flex-1 min-w-0">
+          <h3 className="truncate font-heading text-[15px] font-bold leading-snug text-slate-100 group-hover:text-white transition-colors duration-200">
+            {company.name}
+          </h3>
+          {primaryLocation ? (
+            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-slate-500 group-hover:text-slate-400 transition-colors duration-200">
+              <MapPin className="h-3 w-3 shrink-0 text-slate-600 group-hover:text-slate-400 transition-colors duration-200" />
+              <span className="truncate">{primaryLocation}</span>
+            </div>
           ) : (
-            <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+            <div className="mt-1.5 text-[11px] text-slate-600 italic">Location unlisted</div>
           )}
-          <span className="truncate text-[11px] font-bold">
-            {!nil(growth) ? growth : "—"}
+        </div>
+
+        {/* ── Stats Grid ── */}
+        <div className="grid grid-cols-2 gap-2 mt-4 w-full">
+          <div className="flex items-center gap-2 rounded-xl bg-slate-950/60 border border-slate-900/50 px-3 py-2.5 group-hover:border-slate-800/60 transition-colors duration-200">
+            <Users className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+            <span className="truncate text-[11px] font-medium text-slate-400 group-hover:text-slate-200 transition-colors duration-200">
+              {!nil(company.employee_size) ? company.employee_size.replace(/\s+/g, "") : "—"}
+            </span>
+          </div>
+          <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-colors duration-200 ${nil(growth)
+              ? "bg-slate-950/60 border-slate-900/50 group-hover:border-slate-800/60"
+              : neg
+                ? "bg-red-500/5 border-red-500/10 text-red-400"
+                : "bg-emerald-500/5 border-emerald-500/10 text-emerald-400"
+            }`}>
+            {nil(growth) ? (
+              <TrendingUp className="h-3.5 w-3.5 shrink-0 text-slate-600" />
+            ) : neg ? (
+              <TrendingDown className="h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+            )}
+            <span className="truncate text-[11px] font-semibold">
+              {!nil(growth) ? growth : "—"}
+            </span>
+          </div>
+        </div>
+
+        {/* ── Footer CTA ── */}
+        <div className="mt-5 pt-3.5 border-t border-slate-800/30 group-hover:border-slate-700/30 flex items-center justify-between w-full transition-colors duration-200">
+          <span className="flex items-center gap-1.5 text-[10px] text-slate-600 group-hover:text-slate-400 transition-colors duration-200 truncate max-w-[65%]">
+            {webDomain && (
+              <>
+                <Globe className="h-3 w-3 shrink-0" />
+                <span className="truncate">{webDomain}</span>
+              </>
+            )}
+          </span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 group-hover:text-slate-300 transition-colors duration-200 shrink-0">
+            <span>Explore</span>
+            <ArrowRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5" />
           </span>
         </div>
-      </div>
-
-      {/* ── Footer CTA ── */}
-      <div className="mt-5 pt-3 border-t border-slate-800/40 flex items-center justify-between w-full">
-        <span className="flex items-center gap-1.5 text-[10px] text-slate-500 group-hover:text-slate-300 transition-colors truncate max-w-[65%]">
-          {webDomain && (
-            <>
-              <Globe className="h-3 w-3 shrink-0" />
-              <span className="truncate">{webDomain}</span>
-            </>
-          )}
-        </span>
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 group-hover:text-blue-400 transition-colors shrink-0">
-          <span>Explore</span>
-          <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-        </span>
-      </div>
-    </motion.button>
+      </button>
+    </motion.div>
   );
 });
 
@@ -531,24 +539,27 @@ function HomepageAnalyticsDashboard({ companies }: HomepageAnalyticsDashboardPro
   if (totalCompanies === 0) return null;
 
   return (
-    <div className="mb-10 w-full relative z-10">
+    <div className="mb-12 w-full relative z-10">
       {/* Dashboard Toggle Header */}
-      <div className="flex items-center justify-between mb-4 border-b border-slate-900 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-500/10 shadow-[0_0_12px_rgba(59,130,246,0.1)]">
-            <Sparkles className="h-3.5 w-3.5 text-blue-400 animate-pulse" />
+      <div className="flex items-center justify-between mb-5 border-b border-slate-800/50 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-blue-500/25 bg-blue-500/10 shadow-[0_0_16px_rgba(59,130,246,0.12)]">
+            <Sparkles className="h-4 w-4 text-blue-400 animate-pulse" />
           </div>
-          <h2 className="font-heading text-xs font-bold text-slate-200 tracking-wider uppercase">
-            Karunya Placement Analytics Dashboard
-          </h2>
+          <div>
+            <h2 className="font-heading text-[11px] font-bold text-slate-200 tracking-[0.12em] uppercase leading-none">
+              Karunya Placement Analytics
+            </h2>
+            <p className="text-[10px] text-slate-500 mt-0.5">Live recruiting intelligence</p>
+          </div>
         </div>
         <Button
           variant="outline"
           size="sm"
           onClick={() => setShowDashboard(!showDashboard)}
-          className="rounded-full border-slate-850/80 bg-slate-900/40 text-[11px] font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+          className="rounded-full border-slate-700/60 bg-slate-900/50 text-[11px] font-semibold text-slate-400 hover:bg-slate-800/80 hover:text-slate-200 hover:border-slate-600 transition-all duration-200"
         >
-          {showDashboard ? "Collapse Stats" : "Expand Stats"}
+          {showDashboard ? "Collapse" : "Expand"}
         </Button>
       </div>
 
@@ -559,230 +570,202 @@ function HomepageAnalyticsDashboard({ companies }: HomepageAnalyticsDashboardPro
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="overflow-hidden space-y-6"
+            className="overflow-hidden space-y-5"
           >
             {/* Metric widgets row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
               {/* Card 1: Total Partners */}
-              <div className="rounded-2xl border border-slate-850/80 bg-slate-950/20 p-4 flex flex-col justify-between h-24 hover:border-slate-800 transition-all duration-300">
-                <div className="flex items-center justify-between text-slate-500">
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Recruiting Partners</span>
-                  <Building2 className="h-4 w-4 text-blue-400" />
+              <div className="group relative overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 p-5 flex flex-col justify-between hover:border-blue-500/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:-translate-y-0.5 transition-all duration-300 cursor-default">
+                {/* Accent top line */}
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-500">Recruiting Partners</span>
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-500/10 border border-blue-500/15">
+                    <Building2 className="h-3 w-3 text-blue-400" />
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-xl font-bold font-heading text-slate-100 leading-none">
+                <div className="flex flex-col mt-3">
+                  <span className="text-3xl font-extrabold font-heading text-slate-100 leading-none tabular-nums">
                     {totalCompanies}
                   </span>
-                  <span className="text-[10px] text-slate-500 font-semibold mt-1">Verified Organizations</span>
+                  <span className="text-[10px] text-slate-500 mt-1.5">Verified Organizations</span>
                 </div>
               </div>
 
               {/* Card 2: Average YoY Growth */}
-              <div className="rounded-2xl border border-slate-850/80 bg-slate-950/20 p-4 flex flex-col justify-between h-24 hover:border-slate-800 transition-all duration-300">
-                <div className="flex items-center justify-between text-slate-500">
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Avg YoY Growth</span>
-                  <TrendingUp className="h-4 w-4 text-emerald-400" />
+              <div className="group relative overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 p-5 flex flex-col justify-between hover:border-emerald-500/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:-translate-y-0.5 transition-all duration-300 cursor-default">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-500">Avg YoY Growth</span>
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/15">
+                    <TrendingUp className="h-3 w-3 text-emerald-400" />
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-xl font-bold font-heading text-emerald-400 leading-none">
+                <div className="flex flex-col mt-3">
+                  <span className="text-3xl font-extrabold font-heading text-emerald-400 leading-none tabular-nums">
                     +{avgGrowth.toFixed(1)}%
                   </span>
-                  <span className="text-[10px] text-slate-500 font-semibold mt-1">Annual Growth Trajectory</span>
+                  <span className="text-[10px] text-slate-500 mt-1.5">Annual Growth Trajectory</span>
                 </div>
               </div>
 
               {/* Card 3: Global Footprint */}
-              <div className="rounded-2xl border border-slate-850/80 bg-slate-950/20 p-4 flex flex-col justify-between h-24 hover:border-slate-800 transition-all duration-300">
-                <div className="flex items-center justify-between text-slate-500">
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Global Coverage</span>
-                  <Globe className="h-4 w-4 text-violet-400" />
+              <div className="group relative overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 p-5 flex flex-col justify-between hover:border-violet-500/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:-translate-y-0.5 transition-all duration-300 cursor-default">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-500">Global Coverage</span>
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-500/10 border border-violet-500/15">
+                    <Globe className="h-3 w-3 text-violet-400" />
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-xl font-bold font-heading text-slate-100 leading-none">
+                <div className="flex flex-col mt-3">
+                  <span className="text-3xl font-extrabold font-heading text-slate-100 leading-none tabular-nums">
                     {uniqueCountries.size}
                   </span>
-                  <span className="text-[10px] text-slate-500 font-semibold mt-1">Operating Countries</span>
+                  <span className="text-[10px] text-slate-500 mt-1.5">Operating Countries</span>
                 </div>
               </div>
 
               {/* Card 4: Growth Ratio */}
-              <div className="rounded-2xl border border-slate-850/80 bg-slate-950/20 p-4 flex flex-col justify-between h-24 hover:border-slate-800 transition-all duration-300">
-                <div className="flex items-center justify-between text-slate-500">
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Growth Ratio</span>
-                  <Sparkles className="h-4 w-4 text-amber-500" />
+              <div className="group relative overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 p-5 flex flex-col justify-between hover:border-amber-500/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:-translate-y-0.5 transition-all duration-300 cursor-default">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-500">Growth Ratio</span>
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/15">
+                    <Sparkles className="h-3 w-3 text-amber-400" />
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-xl font-bold font-heading text-amber-400 leading-none">
+                <div className="flex flex-col mt-3">
+                  <span className="text-3xl font-extrabold font-heading text-amber-400 leading-none tabular-nums">
                     {growthRatio.toFixed(0)}%
                   </span>
-                  <span className="text-[10px] text-slate-500 font-semibold mt-1">Expanding Partners</span>
+                  <span className="text-[10px] text-slate-500 mt-1.5">Expanding Partners</span>
                 </div>
               </div>
             </div>
 
             {/* Graphics & Charts Container */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
               {/* Graphic 1: Growth Leaderboard */}
-              <div className="rounded-2xl border border-slate-850/80 bg-slate-950/25 p-5 flex flex-col justify-between hover:border-slate-800 transition-all duration-300">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
-                    Top YoY Growth Leaders
-                  </h3>
-                  <div className="space-y-3.5">
-                    {topGrowthCompanies.map(({ company, val }, idx) => {
-                      const maxVal = topGrowthCompanies[0]?.val || 100;
-                      const pct = maxVal > 0 ? (val! / maxVal) * 100 : 0;
-                      return (
-                        <div key={company.company_id} className="flex flex-col gap-1">
-                          <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
-                            <span className="truncate pr-4">{company.name}</span>
-                            <span className="tabular-nums text-emerald-400 font-bold">+{val?.toFixed(1)}%</span>
-                          </div>
-                          <div className="h-2 w-full rounded-full bg-slate-950/80 border border-slate-900/60 overflow-hidden relative group/bar">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${pct}%` }}
-                              transition={{ duration: 0.8, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_8px_rgba(16,185,129,0.3)]"
-                            />
-                          </div>
+              <div className="relative overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 p-6 flex flex-col hover:border-slate-700/50 hover:shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-all duration-300">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+                <h3 className="text-[9.5px] font-bold text-slate-500 uppercase tracking-[0.14em] mb-5">
+                  Top YoY Growth Leaders
+                </h3>
+                <div className="space-y-4">
+                  {topGrowthCompanies.map(({ company, val }, idx) => {
+                    const maxVal = topGrowthCompanies[0]?.val || 100;
+                    const pct = maxVal > 0 ? (val! / maxVal) * 100 : 0;
+                    return (
+                      <div key={company.company_id} className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="truncate pr-4 text-[12px] font-semibold text-slate-300">{company.name}</span>
+                          <span className="tabular-nums text-[12px] font-bold text-emerald-400 shrink-0">+{val?.toFixed(1)}%</span>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className="h-1.5 w-full rounded-full bg-slate-950/80 overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 1, delay: idx * 0.12, ease: [0.22, 1, 0.36, 1] }}
+                            className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgba(16,185,129,0.4)]"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Graphic 2: Size Distribution (Donut Chart) */}
-              <div className="rounded-2xl border border-slate-850/80 bg-slate-950/25 p-5 flex flex-col justify-between hover:border-slate-800 transition-all duration-300">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
-                    Workforce Scale Distribution
-                  </h3>
-                  <div className="flex flex-col sm:flex-row items-center justify-around gap-6">
-                    {/* Donut Chart */}
-                    {sizeDistribution.totalClassified > 0 ? (
-                      <div className="relative flex items-center justify-center w-28 h-28 shrink-0">
-                        <svg viewBox="0 0 40 40" className="w-full h-full transform -rotate-90">
-                          {/* Base circle background */}
-                          <circle cx="20" cy="20" r="15.9155" fill="transparent" stroke="#090d16" strokeWidth="4.5" />
-                          
-                          {/* Segment 1: Enterprise (Blue) */}
-                          {sizeDistribution.pEnterprise > 0 && (
-                            <motion.circle
-                              cx="20"
-                              cy="20"
-                              r="15.9155"
-                              fill="transparent"
-                              stroke="#3b82f6"
-                              strokeWidth="4.5"
-                              strokeDasharray={`${sizeDistribution.pEnterprise} 100`}
-                              strokeDashoffset={0}
-                              initial={{ strokeDasharray: "0 100" }}
-                              animate={{ strokeDasharray: `${sizeDistribution.pEnterprise} 100` }}
-                              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-                            />
-                          )}
-                          
-                          {/* Segment 2: Large (Indigo) */}
-                          {sizeDistribution.pLarge > 0 && (
-                            <motion.circle
-                              cx="20"
-                              cy="20"
-                              r="15.9155"
-                              fill="transparent"
-                              stroke="#6366f1"
-                              strokeWidth="4.5"
-                              strokeDasharray={`${sizeDistribution.pLarge} 100`}
-                              strokeDashoffset={-sizeDistribution.pEnterprise}
-                              initial={{ strokeDasharray: "0 100" }}
-                              animate={{ strokeDasharray: `${sizeDistribution.pLarge} 100` }}
-                              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-                            />
-                          )}
+              <div className="relative overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 p-6 flex flex-col hover:border-slate-700/50 hover:shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-all duration-300">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
+                <h3 className="text-[9.5px] font-bold text-slate-500 uppercase tracking-[0.14em] mb-5">
+                  Workforce Scale Distribution
+                </h3>
+                <div className="flex flex-col sm:flex-row items-center justify-around gap-6">
+                  {/* Donut Chart */}
+                  {sizeDistribution.totalClassified > 0 ? (
+                    <div className="relative flex items-center justify-center w-32 h-32 shrink-0">
+                      <svg viewBox="0 0 40 40" className="w-full h-full transform -rotate-90">
+                        <circle cx="20" cy="20" r="15.9155" fill="transparent" stroke="#0a0f1a" strokeWidth="5" />
 
-                          {/* Segment 3: Mid-size (Violet) */}
-                          {sizeDistribution.pMid > 0 && (
-                            <motion.circle
-                              cx="20"
-                              cy="20"
-                              r="15.9155"
-                              fill="transparent"
-                              stroke="#8b5cf6"
-                              strokeWidth="4.5"
-                              strokeDasharray={`${sizeDistribution.pMid} 100`}
-                              strokeDashoffset={-(sizeDistribution.pEnterprise + sizeDistribution.pLarge)}
-                              initial={{ strokeDasharray: "0 100" }}
-                              animate={{ strokeDasharray: `${sizeDistribution.pMid} 100` }}
-                              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-                            />
-                          )}
+                        {sizeDistribution.pEnterprise > 0 && (
+                          <motion.circle
+                            cx="20" cy="20" r="15.9155"
+                            fill="transparent" stroke="#3b82f6" strokeWidth="5"
+                            strokeDasharray={`${sizeDistribution.pEnterprise} 100`}
+                            strokeDashoffset={0}
+                            initial={{ strokeDasharray: "0 100" }}
+                            animate={{ strokeDasharray: `${sizeDistribution.pEnterprise} 100` }}
+                            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+                          />
+                        )}
 
-                          {/* Segment 4: Small (Emerald) */}
-                          {sizeDistribution.pSmall > 0 && (
-                            <motion.circle
-                              cx="20"
-                              cy="20"
-                              r="15.9155"
-                              fill="transparent"
-                              stroke="#10b981"
-                              strokeWidth="4.5"
-                              strokeDasharray={`${sizeDistribution.pSmall} 100`}
-                              strokeDashoffset={-(sizeDistribution.pEnterprise + sizeDistribution.pLarge + sizeDistribution.pMid)}
-                              initial={{ strokeDasharray: "0 100" }}
-                              animate={{ strokeDasharray: `${sizeDistribution.pSmall} 100` }}
-                              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-                            />
-                          )}
-                        </svg>
-                        <div className="absolute flex flex-col items-center justify-center text-center">
-                          <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest leading-none">Classified</span>
-                          <span className="text-sm font-bold text-slate-200 mt-0.5">{sizeDistribution.totalClassified}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-slate-500 italic">No size metrics available</span>
-                    )}
+                        {sizeDistribution.pLarge > 0 && (
+                          <motion.circle
+                            cx="20" cy="20" r="15.9155"
+                            fill="transparent" stroke="#6366f1" strokeWidth="5"
+                            strokeDasharray={`${sizeDistribution.pLarge} 100`}
+                            strokeDashoffset={-sizeDistribution.pEnterprise}
+                            initial={{ strokeDasharray: "0 100" }}
+                            animate={{ strokeDasharray: `${sizeDistribution.pLarge} 100` }}
+                            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+                          />
+                        )}
 
-                    {/* Donut Legend */}
-                    <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-2 w-full max-w-[240px]">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-slate-400 leading-none">Enterprise</span>
-                          <span className="text-[11px] font-bold text-slate-200 mt-0.5">
-                            {sizeDistribution.enterprise} ({sizeDistribution.pEnterprise.toFixed(0)}%)
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-indigo-500 shrink-0" />
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-slate-400 leading-none">Large</span>
-                          <span className="text-[11px] font-bold text-slate-200 mt-0.5">
-                            {sizeDistribution.large} ({sizeDistribution.pLarge.toFixed(0)}%)
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-violet-500 shrink-0" />
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-slate-400 leading-none">Mid-size</span>
-                          <span className="text-[11px] font-bold text-slate-200 mt-0.5">
-                            {sizeDistribution.mid} ({sizeDistribution.pMid.toFixed(0)}%)
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-slate-400 leading-none">Small</span>
-                          <span className="text-[11px] font-bold text-slate-200 mt-0.5">
-                            {sizeDistribution.small} ({sizeDistribution.pSmall.toFixed(0)}%)
-                          </span>
-                        </div>
+                        {sizeDistribution.pMid > 0 && (
+                          <motion.circle
+                            cx="20" cy="20" r="15.9155"
+                            fill="transparent" stroke="#8b5cf6" strokeWidth="5"
+                            strokeDasharray={`${sizeDistribution.pMid} 100`}
+                            strokeDashoffset={-(sizeDistribution.pEnterprise + sizeDistribution.pLarge)}
+                            initial={{ strokeDasharray: "0 100" }}
+                            animate={{ strokeDasharray: `${sizeDistribution.pMid} 100` }}
+                            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+                          />
+                        )}
+
+                        {sizeDistribution.pSmall > 0 && (
+                          <motion.circle
+                            cx="20" cy="20" r="15.9155"
+                            fill="transparent" stroke="#10b981" strokeWidth="5"
+                            strokeDasharray={`${sizeDistribution.pSmall} 100`}
+                            strokeDashoffset={-(sizeDistribution.pEnterprise + sizeDistribution.pLarge + sizeDistribution.pMid)}
+                            initial={{ strokeDasharray: "0 100" }}
+                            animate={{ strokeDasharray: `${sizeDistribution.pSmall} 100` }}
+                            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+                          />
+                        )}
+                      </svg>
+                      <div className="absolute flex flex-col items-center justify-center text-center">
+                        <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest leading-none">Total</span>
+                        <span className="text-base font-extrabold text-slate-200 mt-0.5">{sizeDistribution.totalClassified}</span>
                       </div>
                     </div>
+                  ) : (
+                    <span className="text-xs text-slate-500 italic">No size metrics available</span>
+                  )}
+
+                  {/* Legend */}
+                  <div className="flex-1 grid grid-cols-2 gap-x-5 gap-y-3 w-full max-w-[240px]">
+                    {[
+                      { color: "bg-blue-500", label: "Enterprise", count: sizeDistribution.enterprise, pct: sizeDistribution.pEnterprise },
+                      { color: "bg-indigo-500", label: "Large", count: sizeDistribution.large, pct: sizeDistribution.pLarge },
+                      { color: "bg-violet-500", label: "Mid-size", count: sizeDistribution.mid, pct: sizeDistribution.pMid },
+                      { color: "bg-emerald-500", label: "Small", count: sizeDistribution.small, pct: sizeDistribution.pSmall },
+                    ].map(({ color, label, count, pct }) => (
+                      <div key={label} className="flex items-start gap-2">
+                        <span className={`h-2 w-2 rounded-full ${color} shrink-0 mt-0.5`} />
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-500 leading-none">{label}</span>
+                          <span className="text-[11px] font-bold text-slate-200 mt-1">
+                            {count} <span className="text-slate-500 font-medium">({pct.toFixed(0)}%)</span>
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -837,68 +820,73 @@ function IndexPage() {
 
   return (
     <div className="mesh-bg relative min-h-screen">
-      {/* Premium subtle background grid pattern overlay */}
-      <div className="absolute inset-0 z-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none" />
+      {/* Subtle dot-grid overlay */}
+      <div className="absolute inset-0 z-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.012)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.012)_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none" />
       <PlacementNetworkBackground />
+
       {/* ── HERO ─────────────────────────────────── */}
       <header className="relative overflow-hidden z-10">
-        <div className="pointer-events-none absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-blue-900/10 blur-3xl" />
-        <div className="pointer-events-none absolute -right-24 top-10 h-80 w-80 rounded-full bg-violet-900/10 blur-3xl" />
+        <div className="pointer-events-none absolute -left-40 -top-40 h-[640px] w-[640px] rounded-full bg-blue-900/10 blur-3xl" />
+        <div className="pointer-events-none absolute -right-24 top-10 h-[400px] w-[400px] rounded-full bg-violet-900/10 blur-3xl" />
 
-        <div className="relative mx-auto max-w-4xl px-6 pb-12 pt-16 text-center sm:pt-20">
+        <div className="relative mx-auto max-w-4xl px-6 pb-14 pt-24 text-center sm:pt-28">
+          {/* Platform badge */}
           <motion.div
-            initial={{ opacity: 0, y: -12 }}
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-5 inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/60 px-4 py-1.5 text-xs font-semibold text-slate-400 shadow-sm backdrop-blur-sm"
+            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-700/50 bg-slate-900/60 px-4 py-1.5 text-[11px] font-semibold text-slate-400 backdrop-blur-sm"
           >
-            <Sparkles className="h-3.5 w-3.5 text-slate-500" />
+            <Sparkles className="h-3 w-3 text-blue-400" />
             {COLLEGE_SHORT} · INTELLIGENCE PLATFORM
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-            className="font-heading text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl"
+            transition={{ duration: 0.6, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+            className="font-heading text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-[3.75rem] leading-[1.1]"
           >
             {COLLEGE_NAME}
             <br />
-            <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-violet-400 bg-clip-text text-transparent">Placement Intelligence</span>
+            <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-violet-400 bg-clip-text text-transparent">
+              Placement Intelligence
+            </span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="mt-4 text-base text-slate-400 sm:text-lg"
+            transition={{ duration: 0.55, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            className="mt-5 text-base text-slate-400/80 sm:text-[1.05rem] max-w-lg mx-auto leading-relaxed"
           >
-            Your strategic edge for campus placements.
+            Your strategic edge for campus placements — deep company intelligence, skill insights, and growth analytics.
           </motion.p>
 
-          {/* Search */}
+          {/* Search bar */}
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.97 }}
+            initial={{ opacity: 0, y: 12, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="relative mx-auto mt-8 flex max-w-xl items-center rounded-full border border-slate-800/80 bg-slate-900/40 backdrop-blur-md px-5 py-1 shadow-inner focus-within:border-slate-700/80"
+            transition={{ duration: 0.55, delay: 0.26, ease: [0.22, 1, 0.36, 1] }}
+            className="glass-search relative mx-auto mt-9 flex max-w-lg items-center px-5 py-1"
           >
             <Search className="pointer-events-none h-4 w-4 shrink-0 text-slate-500" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search companies, locations…"
-              className="h-12 flex-1 border-0 bg-transparent px-3 text-sm text-slate-100 placeholder-slate-500 shadow-none focus-visible:ring-0"
+              className="h-12 flex-1 border-0 bg-transparent px-3 text-[13.5px] text-slate-100 placeholder-slate-500 shadow-none focus-visible:ring-0"
             />
             <AnimatePresence>
               {query && (
                 <motion.button
                   type="button"
-                  initial={{ opacity: 0, scale: 0.7 }}
+                  initial={{ opacity: 0, scale: 0.6 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.7 }}
+                  exit={{ opacity: 0, scale: 0.6 }}
+                  transition={{ duration: 0.15 }}
                   onClick={() => setQuery("")}
-                  className="rounded-full p-1.5 text-slate-500 hover:bg-slate-800"
+                  className="rounded-full p-1.5 text-slate-500 hover:text-slate-200 hover:bg-slate-700/60 transition-colors duration-150"
                   aria-label="Clear search"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -906,65 +894,70 @@ function IndexPage() {
               )}
             </AnimatePresence>
           </motion.div>
-
         </div>
       </header>
 
-      {/* ── META ─────────────────────────────── */}
-      {!isLoading && !isError && filtered.length > 0 && (
-        <div className="mx-auto max-w-7xl px-6 pb-4 relative z-10">
-          <p className="text-xs font-medium text-slate-500">
-            {filtered.length} {filtered.length === 1 ? "company" : "companies"}
-          </p>
-        </div>
-      )}
+      {/* ── MAIN CONTENT ─────────────────────────── */}
+      <main className="mx-auto max-w-7xl px-5 pb-24 sm:px-8 relative z-10">
 
-      {/* ── GRID ──────────────────────────────── */}
-      <main className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 relative z-10">
+        {/* Thin divider between hero and content */}
+        <div className="border-t border-slate-800/35 mb-10" />
+
+        {/* Analytics Dashboard — only shown when data loaded */}
         {!isLoading && !isError && companies.length > 0 && (
           <HomepageAnalyticsDashboard companies={companies} />
         )}
+
+        {/* Result count */}
+        {!isLoading && !isError && filtered.length > 0 && (
+          <p className="mb-5 text-[11px] font-semibold text-slate-500 tracking-wide">
+            {filtered.length} {filtered.length === 1 ? "company" : "companies"}
+          </p>
+        )}
+
+        {/* Company grid / states */}
         {isLoading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex flex-col rounded-2xl border border-slate-800 bg-slate-900/40 p-5 min-h-[230px] justify-between">
+              <div key={i} className="relative overflow-hidden flex flex-col rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/60 to-slate-950/70 p-6 min-h-[248px] justify-between">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-700/40 to-transparent" />
                 <div className="flex items-start justify-between w-full">
-                  <div className="h-11 w-11 animate-pulse rounded-xl bg-slate-800" />
-                  <div className="h-4.5 w-12 animate-pulse rounded-lg bg-slate-800" />
+                  <div className="h-11 w-11 animate-pulse rounded-xl bg-slate-800/80" />
+                  <div className="h-5 w-14 animate-pulse rounded-lg bg-slate-800/60" />
                 </div>
                 <div className="space-y-2 mt-4 flex-1">
-                  <div className="h-4 w-3/4 animate-pulse rounded bg-slate-800" />
-                  <div className="h-3.5 w-1/2 animate-pulse rounded bg-slate-800/50" />
+                  <div className="h-4 w-3/4 animate-pulse rounded bg-slate-800/70" />
+                  <div className="h-3 w-1/2 animate-pulse rounded bg-slate-800/40" />
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-4 w-full">
                   <div className="h-9 animate-pulse rounded-xl bg-slate-800/40" />
                   <div className="h-9 animate-pulse rounded-xl bg-slate-800/40" />
                 </div>
-                <div className="mt-5 pt-3 border-t border-slate-800/40 flex items-center justify-between w-full">
-                  <div className="h-3.5 w-24 animate-pulse rounded bg-slate-800/30" />
-                  <div className="h-3.5 w-12 animate-pulse rounded bg-slate-800/30" />
+                <div className="mt-5 pt-3 border-t border-slate-800/30 flex items-center justify-between w-full">
+                  <div className="h-3 w-24 animate-pulse rounded bg-slate-800/30" />
+                  <div className="h-3 w-12 animate-pulse rounded bg-slate-800/30" />
                 </div>
               </div>
             ))}
           </div>
         ) : isError ? (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-14 text-center backdrop-blur-md">
+          <div className="rounded-2xl border border-slate-800/50 bg-slate-900/40 p-16 text-center">
             <Building2 className="mx-auto mb-4 h-9 w-9 text-slate-700" />
             <p className="text-sm font-medium text-slate-400">Failed to load companies.</p>
-            <Button variant="outline" className="mt-4 rounded-full border-slate-800 text-slate-300 hover:bg-slate-800" onClick={() => refetch()}>
+            <Button variant="outline" className="mt-5 rounded-full border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600" onClick={() => refetch()}>
               Try again
             </Button>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-14 text-center backdrop-blur-md">
+          <div className="rounded-2xl border border-slate-800/50 bg-slate-900/40 p-16 text-center">
             <Search className="mx-auto mb-4 h-9 w-9 text-slate-700" />
-            <p className="text-sm text-slate-500">No companies match your search.</p>
-            <Button variant="outline" className="mt-4 rounded-full border-slate-800 text-slate-300 hover:bg-slate-800" onClick={() => setQuery("")}>
+            <p className="text-sm font-medium text-slate-500">No companies match your search.</p>
+            <Button variant="outline" className="mt-5 rounded-full border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600" onClick={() => setQuery("")}>
               Clear search
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="company-grid grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((c, i) => (
               <CompanyCard key={c.company_id} company={c} onSelect={handleSelect} index={i} />
             ))}

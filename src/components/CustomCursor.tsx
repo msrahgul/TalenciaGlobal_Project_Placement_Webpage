@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 
 export function CustomCursor() {
-  const [dotPosition, setDotPosition] = useState({ x: 0, y: 0 });
+  const [positions, setPositions] = useState({
+    cursor: { x: 0, y: 0 },
+    trailing: { x: 0, y: 0 },
+  });
   const [clicked, setClicked] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
   const targetRef = useRef({ x: 0, y: 0 });
-  const dotRef = useRef({ x: 0, y: 0 });
+  const trailingRef = useRef({ x: 0, y: 0 });
   const hasMoved = useRef(false);
 
   useEffect(() => {
@@ -28,8 +31,11 @@ export function CustomCursor() {
       setIsVisible(true);
 
       if (!hasMoved.current) {
-        dotRef.current = { x: e.clientX, y: e.clientY };
-        setDotPosition({ x: e.clientX, y: e.clientY });
+        trailingRef.current = { x: e.clientX, y: e.clientY };
+        setPositions({
+          cursor: targetRef.current,
+          trailing: trailingRef.current,
+        });
         hasMoved.current = true;
       }
     };
@@ -38,13 +44,17 @@ export function CustomCursor() {
 
     const updateCursor = () => {
       if (hasMoved.current) {
-        // Inner dot (and concentric circle) follows mouse position with a smooth delay (speed: 0.15)
-        const dxDot = targetRef.current.x - dotRef.current.x;
-        const dyDot = targetRef.current.y - dotRef.current.y;
-        dotRef.current.x += dxDot * 0.15;
-        dotRef.current.y += dyDot * 0.15;
+        // Outer ring follows with smooth lerp — 0.18 = snappy but not instant
+        const dx = targetRef.current.x - trailingRef.current.x;
+        const dy = targetRef.current.y - trailingRef.current.y;
 
-        setDotPosition({ x: dotRef.current.x, y: dotRef.current.y });
+        trailingRef.current.x += dx * 0.18;
+        trailingRef.current.y += dy * 0.18;
+
+        setPositions({
+          cursor: { x: targetRef.current.x, y: targetRef.current.y },
+          trailing: { x: trailingRef.current.x, y: trailingRef.current.y },
+        });
       }
 
       animationFrameId = requestAnimationFrame(updateCursor);
@@ -60,6 +70,7 @@ export function CustomCursor() {
       if (
         target.tagName === "BUTTON" ||
         target.tagName === "A" ||
+        target.tagName === "INPUT" ||
         target.closest("button") ||
         target.closest("a") ||
         target.classList.contains("cursor-pointer") ||
@@ -71,13 +82,8 @@ export function CustomCursor() {
       }
     };
 
-    const handleMouseLeave = () => {
-      setIsVisible(false);
-    };
-
-    const handleMouseEnter = () => {
-      setIsVisible(true);
-    };
+    const handleMouseLeave = () => setIsVisible(false);
+    const handleMouseEnter = () => setIsVisible(true);
 
     window.addEventListener("mousemove", updatePosition, { passive: true });
     window.addEventListener("mousedown", handleMouseDown, { passive: true });
@@ -94,7 +100,7 @@ export function CustomCursor() {
       window.removeEventListener("mouseover", handleMouseOver);
       document.removeEventListener("mouseleave", handleMouseLeave);
       document.removeEventListener("mouseenter", handleMouseEnter);
-      
+
       document.head.removeChild(style);
       document.body.classList.remove("custom-cursor-active");
     };
@@ -102,27 +108,51 @@ export function CustomCursor() {
 
   if (!isVisible) return null;
 
+  // Scale factors
+  const ringScale = clicked ? 0.75 : hovered ? 1.45 : 1;
+  const dotScale = hovered || clicked ? 0 : 1;
+
   return (
-    <div className="hidden lg:block pointer-events-none">
-      {/* Outer ring tracking - perfectly concentric with inner dot */}
+    <div className="hidden lg:block pointer-events-none select-none">
+      {/*
+        Outer trailing ring — hollow circle, mix-blend-mode: difference.
+        On dark bg it appears white; on light bg it appears black.
+        This gives instant, automatic contrast on any surface.
+      */}
       <div
-        className="pointer-events-none fixed z-50 h-9 w-9 -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-500/40 transition-transform duration-100 ease-out"
+        className="pointer-events-none fixed z-[9999]"
         style={{
-          left: `${dotPosition.x}px`,
-          top: `${dotPosition.y}px`,
-          transform: `translate(-50%, -50%) scale(${clicked ? 0.75 : hovered ? 1.5 : 1})`,
-          backgroundColor: hovered ? "rgba(59, 130, 246, 0.08)" : "transparent",
-          borderColor: hovered ? "rgba(59, 130, 246, 0.6)" : "rgba(59, 130, 246, 0.4)",
-          boxShadow: hovered ? "0 0 12px rgba(59, 130, 246, 0.2)" : "none",
+          left: `${positions.trailing.x}px`,
+          top: `${positions.trailing.y}px`,
+          transform: `translate(-50%, -50%) scale(${ringScale})`,
+          transition: "transform 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
+          mixBlendMode: "difference",
+          width: "30px",
+          height: "30px",
+          borderRadius: "50%",
+          border: "1.5px solid white",
+          backgroundColor: "transparent",
+          willChange: "transform, left, top",
         }}
       />
-      {/* Inner dot tracking */}
+
+      {/*
+        Inner dot — tracks the precise mouse position instantly.
+        Also uses mix-blend-mode: difference for the same inversion effect.
+      */}
       <div
-        className="pointer-events-none fixed z-50 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa] transition-transform duration-75 ease-out"
+        className="pointer-events-none fixed z-[9999]"
         style={{
-          left: `${dotPosition.x}px`,
-          top: `${dotPosition.y}px`,
-          transform: `translate(-50%, -50%) scale(${clicked ? 0.8 : hovered ? 0.5 : 1})`,
+          left: `${positions.cursor.x}px`,
+          top: `${positions.cursor.y}px`,
+          transform: `translate(-50%, -50%) scale(${dotScale})`,
+          transition: "transform 0.15s cubic-bezier(0.22, 1, 0.36, 1)",
+          mixBlendMode: "difference",
+          width: "5px",
+          height: "5px",
+          borderRadius: "50%",
+          backgroundColor: "white",
+          willChange: "transform, left, top",
         }}
       />
     </div>
