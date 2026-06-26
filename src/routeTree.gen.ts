@@ -13,6 +13,7 @@ import { Route as CompanyRouteImport } from './routes/company'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CompanySkillsRouteImport } from './routes/company.skills'
 import { Route as CompanyIntelligenceRouteImport } from './routes/company.intelligence'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 
 const CompanyRoute = CompanyRouteImport.update({
   id: '/company',
@@ -34,16 +35,23 @@ const CompanyIntelligenceRoute = CompanyIntelligenceRouteImport.update({
   path: '/intelligence',
   getParentRoute: () => CompanyRoute,
 } as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/company': typeof CompanyRouteWithChildren
+  '/api/chat': typeof ApiChatRoute
   '/company/intelligence': typeof CompanyIntelligenceRoute
   '/company/skills': typeof CompanySkillsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/company': typeof CompanyRouteWithChildren
+  '/api/chat': typeof ApiChatRoute
   '/company/intelligence': typeof CompanyIntelligenceRoute
   '/company/skills': typeof CompanySkillsRoute
 }
@@ -51,18 +59,30 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/company': typeof CompanyRouteWithChildren
+  '/api/chat': typeof ApiChatRoute
   '/company/intelligence': typeof CompanyIntelligenceRoute
   '/company/skills': typeof CompanySkillsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/company' | '/company/intelligence' | '/company/skills'
+  fullPaths:
+    | '/'
+    | '/company'
+    | '/api/chat'
+    | '/company/intelligence'
+    | '/company/skills'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/company' | '/company/intelligence' | '/company/skills'
+  to:
+    | '/'
+    | '/company'
+    | '/api/chat'
+    | '/company/intelligence'
+    | '/company/skills'
   id:
     | '__root__'
     | '/'
     | '/company'
+    | '/api/chat'
     | '/company/intelligence'
     | '/company/skills'
   fileRoutesById: FileRoutesById
@@ -70,6 +90,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CompanyRoute: typeof CompanyRouteWithChildren
+  ApiChatRoute: typeof ApiChatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -102,6 +123,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompanyIntelligenceRouteImport
       parentRoute: typeof CompanyRoute
     }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -121,6 +149,7 @@ const CompanyRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CompanyRoute: CompanyRouteWithChildren,
+  ApiChatRoute: ApiChatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

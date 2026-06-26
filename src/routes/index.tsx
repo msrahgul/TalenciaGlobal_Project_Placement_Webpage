@@ -88,17 +88,9 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
     // ── Page Visibility API: pause RAF when tab is hidden
     const onVisibility = () => { paused = document.hidden; };
 
-    // ── Pause canvas during scroll to free up compositor thread
-    let scrollTimer = 0;
-    const onScroll = () => {
-      paused = true;
-      clearTimeout(scrollTimer);
-      scrollTimer = window.setTimeout(() => { paused = false; }, 120);
-    };
-
+    // Keep animation running during scroll for smooth visual continuity.
     window.addEventListener("resize", resize, { passive: true });
     window.addEventListener("mousemove", onMouse, { passive: true });
-    window.addEventListener("scroll", onScroll, { passive: true });
     document.addEventListener("mouseleave", onLeave);
     document.addEventListener("visibilitychange", onVisibility);
 
@@ -225,10 +217,8 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
 
     return () => {
       cancelAnimationFrame(rafId);
-      clearTimeout(scrollTimer);
       window.removeEventListener("resize", resize);
       window.removeEventListener("mousemove", onMouse);
-      window.removeEventListener("scroll", onScroll);
       document.removeEventListener("mouseleave", onLeave);
       document.removeEventListener("visibilitychange", onVisibility);
     };
@@ -335,12 +325,14 @@ const CompanyCard = memo(function CompanyCard({
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -4 }}
+      whileTap={{ scale: 0.985 }}
       transition={{ duration: 0.35, delay: Math.min(index * 0.02, 0.4), ease: [0.22, 1, 0.36, 1] }}
     >
       <button
         type="button"
         onClick={() => onSelect(company)}
-        className={`group relative overflow-hidden flex flex-col w-full rounded-2xl text-left border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 p-6 min-h-[248px] card-hover ${accent.hoverBorder}`}
+        className={`group relative overflow-hidden flex flex-col w-full rounded-2xl text-left border border-white/[0.05] bg-slate-900/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 p-6 min-h-[248px] transition-all duration-300 ease-in-out hover:border-slate-800/50 hover:bg-gradient-to-br hover:from-slate-900/60 hover:to-slate-950/70 hover:shadow-[0_8px_32px_-8px_rgba(0,0,0,0.45)] ${accent.hoverBorder}`}
       >
         {/* ── Category-colored top accent stripe (matches stat card design) ── */}
         <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r ${accent.stripe}`} />
@@ -378,14 +370,14 @@ const CompanyCard = memo(function CompanyCard({
 
         {/* ── Stats Grid ── */}
         <div className="grid grid-cols-2 gap-2 mt-4 w-full">
-          <div className="flex items-center gap-2 rounded-xl bg-slate-950/60 border border-slate-900/50 px-3 py-2.5 group-hover:border-slate-800/60 transition-colors duration-200">
+          <div className="flex items-center gap-2 rounded-xl bg-slate-950/20 border border-white/[0.04] px-3 py-2.5 group-hover:bg-slate-950/50 group-hover:border-slate-800/40 transition-all duration-300 ease-in-out">
             <Users className="h-3.5 w-3.5 shrink-0 text-slate-500" />
             <span className="truncate text-[11px] font-medium text-slate-400 group-hover:text-slate-200 transition-colors duration-200">
-              {!nil(company.employee_size) ? company.employee_size.replace(/\s+/g, "") : "—"}
+              {!nil(company.employee_size) ? company.employee_size!.replace(/\s+/g, "") : "—"}
             </span>
           </div>
-          <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-colors duration-200 ${nil(growth)
-              ? "bg-slate-950/60 border-slate-900/50 group-hover:border-slate-800/60"
+          <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-all duration-300 ease-in-out ${nil(growth)
+              ? "bg-slate-950/20 border-white/[0.04] group-hover:bg-slate-950/50 group-hover:border-slate-800/40"
               : neg
                 ? "bg-red-500/5 border-red-500/10 text-red-400"
                 : "bg-emerald-500/5 border-emerald-500/10 text-emerald-400"
@@ -404,7 +396,7 @@ const CompanyCard = memo(function CompanyCard({
         </div>
 
         {/* ── Footer CTA ── */}
-        <div className="mt-5 pt-3.5 border-t border-slate-800/30 group-hover:border-slate-700/30 flex items-center justify-between w-full transition-colors duration-200">
+        <div className="mt-5 pt-3.5 border-t border-white/[0.04] group-hover:border-slate-800/30 flex items-center justify-between w-full transition-all duration-300 ease-in-out">
           <span className="flex items-center gap-1.5 text-[10px] text-slate-600 group-hover:text-slate-400 transition-colors duration-200 truncate max-w-[65%]">
             {webDomain && (
               <>
@@ -573,10 +565,23 @@ function HomepageAnalyticsDashboard({ companies }: HomepageAnalyticsDashboardPro
             className="overflow-hidden space-y-5"
           >
             {/* Metric widgets row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <motion.div
+              initial="hidden"
+              animate="show"
+              variants={{
+                hidden: {},
+                show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+              }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+            >
 
               {/* Card 1: Total Partners */}
-              <div className="group relative overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 p-5 flex flex-col justify-between hover:border-blue-500/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:-translate-y-0.5 transition-all duration-300 cursor-default">
+              <motion.div
+                variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } } }}
+                whileHover={{ y: -3 }}
+                whileTap={{ scale: 0.985 }}
+                className="group relative overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 p-5 flex flex-col justify-between hover:border-blue-500/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-all duration-300 cursor-default"
+              >
                 {/* Accent top line */}
                 <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
                 <div className="flex items-center justify-between">
@@ -591,10 +596,15 @@ function HomepageAnalyticsDashboard({ companies }: HomepageAnalyticsDashboardPro
                   </span>
                   <span className="text-[10px] text-slate-500 mt-1.5">Verified Organizations</span>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Card 2: Average YoY Growth */}
-              <div className="group relative overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 p-5 flex flex-col justify-between hover:border-emerald-500/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:-translate-y-0.5 transition-all duration-300 cursor-default">
+              <motion.div
+                variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } } }}
+                whileHover={{ y: -3 }}
+                whileTap={{ scale: 0.985 }}
+                className="group relative overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 p-5 flex flex-col justify-between hover:border-emerald-500/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-all duration-300 cursor-default"
+              >
                 <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
                 <div className="flex items-center justify-between">
                   <span className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-500">Avg YoY Growth</span>
@@ -608,10 +618,15 @@ function HomepageAnalyticsDashboard({ companies }: HomepageAnalyticsDashboardPro
                   </span>
                   <span className="text-[10px] text-slate-500 mt-1.5">Annual Growth Trajectory</span>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Card 3: Global Footprint */}
-              <div className="group relative overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 p-5 flex flex-col justify-between hover:border-violet-500/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:-translate-y-0.5 transition-all duration-300 cursor-default">
+              <motion.div
+                variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } } }}
+                whileHover={{ y: -3 }}
+                whileTap={{ scale: 0.985 }}
+                className="group relative overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 p-5 flex flex-col justify-between hover:border-violet-500/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-all duration-300 cursor-default"
+              >
                 <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
                 <div className="flex items-center justify-between">
                   <span className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-500">Global Coverage</span>
@@ -625,10 +640,15 @@ function HomepageAnalyticsDashboard({ companies }: HomepageAnalyticsDashboardPro
                   </span>
                   <span className="text-[10px] text-slate-500 mt-1.5">Operating Countries</span>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Card 4: Growth Ratio */}
-              <div className="group relative overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 p-5 flex flex-col justify-between hover:border-amber-500/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:-translate-y-0.5 transition-all duration-300 cursor-default">
+              <motion.div
+                variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } } }}
+                whileHover={{ y: -3 }}
+                whileTap={{ scale: 0.985 }}
+                className="group relative overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/70 to-slate-950/80 p-5 flex flex-col justify-between hover:border-amber-500/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-all duration-300 cursor-default"
+              >
                 <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
                 <div className="flex items-center justify-between">
                   <span className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-500">Growth Ratio</span>
@@ -642,8 +662,9 @@ function HomepageAnalyticsDashboard({ companies }: HomepageAnalyticsDashboardPro
                   </span>
                   <span className="text-[10px] text-slate-500 mt-1.5">Expanding Partners</span>
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
+
 
             {/* Graphics & Charts Container */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -820,73 +841,72 @@ function IndexPage() {
 
   return (
     <div className="mesh-bg relative min-h-screen">
-      {/* Subtle dot-grid overlay */}
-      <div className="absolute inset-0 z-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.012)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.012)_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none" />
+      <div className="grid-bg absolute inset-0 z-0 pointer-events-none" />
       <PlacementNetworkBackground />
 
-      {/* ── HERO ─────────────────────────────────── */}
-      <header className="relative overflow-hidden z-10">
-        <div className="pointer-events-none absolute -left-40 -top-40 h-[640px] w-[640px] rounded-full bg-blue-900/10 blur-3xl" />
-        <div className="pointer-events-none absolute -right-24 top-10 h-[400px] w-[400px] rounded-full bg-violet-900/10 blur-3xl" />
 
-        <div className="relative mx-auto max-w-4xl px-6 pb-14 pt-24 text-center sm:pt-28">
+      {/* ── HERO ─────────────────────────────────── */}
+      <header className="relative z-10">
+        <div className="relative mx-auto max-w-5xl px-6 pb-16 pt-24 sm:pt-32">
           {/* Platform badge */}
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-700/50 bg-slate-900/60 px-4 py-1.5 text-[11px] font-semibold text-slate-400 backdrop-blur-sm"
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="mb-7 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-[11px] font-medium text-muted-foreground backdrop-blur-sm"
           >
-            <Sparkles className="h-3 w-3 text-blue-400" />
-            {COLLEGE_SHORT} · INTELLIGENCE PLATFORM
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-70" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
+            </span>
+            {COLLEGE_SHORT} · Placement Intelligence
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: 18 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-            className="font-heading text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-[3.75rem] leading-[1.1]"
+            transition={{ duration: 0.55, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
+            className="font-heading text-[2.5rem] font-semibold tracking-[-0.035em] text-foreground sm:text-[3.5rem] lg:text-[4.25rem] leading-[1.02]"
           >
-            {COLLEGE_NAME}
+            Every recruiter at {COLLEGE_SHORT},
             <br />
-            <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-violet-400 bg-clip-text text-transparent">
-              Placement Intelligence
-            </span>
+            <span className="text-muted-foreground">in one quiet place.</span>
           </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
-            className="mt-5 text-base text-slate-400/80 sm:text-[1.05rem] max-w-lg mx-auto leading-relaxed"
+            transition={{ duration: 0.5, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
+            className="mt-6 max-w-xl text-[15px] leading-relaxed text-muted-foreground"
           >
-            Your strategic edge for campus placements — deep company intelligence, skill insights, and growth analytics.
+            Deep company intelligence, skill maps, and growth analytics — engineered for the
+            students and faculty of {COLLEGE_NAME}.
           </motion.p>
 
           {/* Search bar */}
           <motion.div
-            initial={{ opacity: 0, y: 12, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.55, delay: 0.26, ease: [0.22, 1, 0.36, 1] }}
-            className="glass-search relative mx-auto mt-9 flex max-w-lg items-center px-5 py-1"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            className="glass-search relative mt-10 flex max-w-xl items-center px-5"
           >
-            <Search className="pointer-events-none h-4 w-4 shrink-0 text-slate-500" />
+            <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search companies, locations…"
-              className="h-12 flex-1 border-0 bg-transparent px-3 text-[13.5px] text-slate-100 placeholder-slate-500 shadow-none focus-visible:ring-0"
+              placeholder="Search companies, locations, categories…"
+              className="h-12 flex-1 border-0 bg-transparent px-3 text-[14px] text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0"
             />
             <AnimatePresence>
               {query && (
                 <motion.button
                   type="button"
-                  initial={{ opacity: 0, scale: 0.6 }}
+                  initial={{ opacity: 0, scale: 0.7 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.6 }}
-                  transition={{ duration: 0.15 }}
+                  exit={{ opacity: 0, scale: 0.7 }}
+                  transition={{ duration: 0.12 }}
                   onClick={() => setQuery("")}
-                  className="rounded-full p-1.5 text-slate-500 hover:text-slate-200 hover:bg-slate-700/60 transition-colors duration-150"
+                  className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   aria-label="Clear search"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -901,7 +921,7 @@ function IndexPage() {
       <main className="mx-auto max-w-7xl px-5 pb-24 sm:px-8 relative z-10">
 
         {/* Thin divider between hero and content */}
-        <div className="border-t border-slate-800/35 mb-10" />
+        <div className="border-t border-border mb-10" />
 
         {/* Analytics Dashboard — only shown when data loaded */}
         {!isLoading && !isError && companies.length > 0 && (

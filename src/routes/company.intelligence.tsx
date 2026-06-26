@@ -127,10 +127,10 @@ function BentoFieldCell({
 
   return (
     <div
-      className={`group/cell relative flex flex-col gap-1.5 rounded-xl border transition-all duration-300 ${
+      className={`group/cell relative flex flex-col gap-1.5 rounded-xl border transition-all duration-300 ease-in-out ${
         empty
-          ? "border-slate-855/30 bg-slate-955/10 opacity-30 hover:opacity-50 p-3"
-          : "border-slate-800/40 bg-slate-900/10 hover:border-slate-700/40 hover:bg-slate-900/20 p-4 shadow-sm hover:shadow-[0_2px_12px_-2px_rgba(59,130,246,0.04)]"
+          ? "border-white/[0.03] bg-slate-900/[0.06] opacity-40 hover:opacity-65 hover:border-slate-800/30 hover:bg-slate-900/15 p-3"
+          : "border-white/[0.05] bg-slate-900/[0.12] hover:border-slate-700/50 hover:bg-slate-900/35 hover:shadow-[0_4px_16px_-4px_rgba(59,130,246,0.08)] p-4"
       } ${colSpan}`}
     >
       <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 transition-colors group-hover/cell:text-slate-400">
@@ -191,7 +191,7 @@ function IntelligenceOverviewDashboard({ profile }: DashboardProps) {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {/* YoY Growth Card */}
       {hasGrowth && (
-        <div className="rounded-2xl border border-slate-850/80 bg-slate-950/20 p-4 flex flex-col justify-between h-28 hover:border-slate-800 transition-all duration-300">
+        <div className="rounded-2xl border border-white/[0.05] bg-slate-900/15 p-4 flex flex-col justify-between h-28 hover:border-slate-800/80 hover:bg-slate-950/50 hover:shadow-[0_4px_20px_-4px_rgba(16,185,129,0.12)] transition-all duration-300 ease-in-out">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-[10px] font-bold uppercase tracking-widest">YoY Growth</span>
             <Activity className="h-4 w-4 text-slate-400" />
@@ -221,7 +221,7 @@ function IntelligenceOverviewDashboard({ profile }: DashboardProps) {
 
       {/* Rating Card */}
       {hasRating && (
-        <div className="rounded-2xl border border-slate-850/80 bg-slate-950/20 p-4 flex flex-col justify-between h-28 hover:border-slate-800 transition-all duration-300">
+        <div className="rounded-2xl border border-white/[0.05] bg-slate-900/15 p-4 flex flex-col justify-between h-28 hover:border-slate-800/80 hover:bg-slate-950/50 hover:shadow-[0_4px_20px_-4px_rgba(245,158,11,0.10)] transition-all duration-300 ease-in-out">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-[10px] font-bold uppercase tracking-widest">{ratingLabel}</span>
             <Star className="h-4 w-4 text-amber-500" />
@@ -259,7 +259,7 @@ function IntelligenceOverviewDashboard({ profile }: DashboardProps) {
 
       {/* Workforce Scale Card */}
       {hasSize && (
-        <div className="rounded-2xl border border-slate-850/80 bg-slate-950/20 p-4 flex flex-col justify-between h-28 hover:border-slate-800 transition-all duration-300">
+        <div className="rounded-2xl border border-white/[0.05] bg-slate-900/15 p-4 flex flex-col justify-between h-28 hover:border-slate-800/80 hover:bg-slate-950/50 hover:shadow-[0_4px_20px_-4px_rgba(59,130,246,0.10)] transition-all duration-300 ease-in-out">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-[10px] font-bold uppercase tracking-widest">Workforce Scale</span>
             <Users className="h-4 w-4 text-blue-400" />
@@ -281,7 +281,7 @@ function IntelligenceOverviewDashboard({ profile }: DashboardProps) {
 
       {/* Tech Adoption Card */}
       {hasTech && (
-        <div className="rounded-2xl border border-slate-850/80 bg-slate-950/20 p-4 flex flex-col justify-between h-28 hover:border-slate-800 transition-all duration-300">
+        <div className="rounded-2xl border border-white/[0.05] bg-slate-900/15 p-4 flex flex-col justify-between h-28 hover:border-slate-800/80 hover:bg-slate-950/50 hover:shadow-[0_4px_20px_-4px_rgba(139,92,246,0.10)] transition-all duration-300 ease-in-out">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-[10px] font-bold uppercase tracking-widest">{techLabel}</span>
             <Award className="h-4 w-4 text-violet-400" />
@@ -333,15 +333,24 @@ function CompanyIntelligencePage() {
 
   useEffect(() => {
     if (!profile) return;
+    let ticking = false;
     const onScroll = () => {
-      if (isScrollingRef.current) return;
-      // Offset adjusts for sticky header
-      const offset = window.innerWidth >= 1024 ? 120 : 160;
-      let current = 0;
-      sectionRefs.current.forEach((el, i) => {
-        if (el && el.getBoundingClientRect().top - offset <= 0) current = i;
-      });
-      setActiveIdx(current);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          if (isScrollingRef.current) {
+            ticking = false;
+            return;
+          }
+          const offset = window.innerWidth >= 1024 ? 120 : 160;
+          let current = 0;
+          sectionRefs.current.forEach((el, i) => {
+            if (el && el.getBoundingClientRect().top - offset <= 0) current = i;
+          });
+          setActiveIdx(current);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -441,9 +450,9 @@ function CompanyIntelligencePage() {
     <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
       
       {/* ── INFO STRIP & MOBILE TABS INDEX ─────────────────── */}
-      <div className="mb-6 flex flex-col gap-4">
-        {/* Info Strip (Category + External Links) */}
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-950/20 border border-slate-900/50 rounded-2xl px-5 py-3">
+      <div className="mb-6 flex flex-col gap-3">
+        {/* Info Strip (Category + External Links) — sticky under main header */}
+        <div className="lg:sticky lg:top-[80px] z-20 flex flex-wrap items-center justify-between gap-4 bg-slate-950/95 border border-slate-900/60 rounded-2xl px-5 py-3 shadow-md backdrop-blur-sm">
           <div className="flex items-center gap-2.5">
             <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Sector:</span>
             {!isNullish(profile.category) ? (
@@ -472,10 +481,11 @@ function CompanyIntelligencePage() {
           </div>
         </div>
 
+
         {/* Mobile Horizontal Sticky Tab Nav (lg:hidden) */}
         <div
           ref={tabsRef}
-          className="sticky top-[72px] z-20 flex gap-1 overflow-x-auto rounded-2xl border border-slate-850/80 bg-slate-950/75 p-1 shadow-md backdrop-blur-xl lg:hidden"
+          className="sticky top-[72px] z-20 flex gap-1 overflow-x-auto rounded-2xl border border-slate-850/80 bg-slate-950/95 p-1 shadow-md backdrop-blur-sm lg:hidden"
           style={{ scrollbarWidth: "none" }}
         >
           {sections.map((s, i) => (
@@ -561,7 +571,7 @@ function CompanyIntelligencePage() {
               <div
                 key={section.id}
                 ref={(el) => { sectionRefs.current[i] = el; }}
-                className="scroll-mt-[88px] lg:scroll-mt-[88px] rounded-2xl border border-slate-850/80 bg-gradient-to-b from-slate-900/40 to-slate-950/60 p-6 shadow-xl backdrop-blur-sm transition-all duration-300 hover:bg-gradient-to-b hover:from-slate-900/95 hover:to-slate-950/90 hover:border-slate-500/80 hover:shadow-[0_0_30px_rgba(148,163,184,0.25)]"
+                className="scroll-mt-[88px] lg:scroll-mt-[88px] rounded-2xl border border-white/[0.04] bg-slate-900/[0.07] backdrop-blur-[2px] p-6 transition-all duration-300 ease-in-out hover:bg-gradient-to-b hover:from-slate-900/70 hover:to-slate-950/80 hover:border-slate-700/60 hover:shadow-[0_0_30px_rgba(99,102,241,0.12)]"
               >
                 <div className="mb-5 flex items-center justify-between gap-3 border-b border-slate-900 pb-4">
                   <div className="flex items-center gap-3">

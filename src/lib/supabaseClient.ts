@@ -1,26 +1,39 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Polyfill WebSocket for SSR on Node.js (< 22)
+// Polyfill a dummy WebSocket class for Server-Side Rendering (SSR) to prevent Supabase Realtime warnings/crashes in Node.js 20
 if (typeof window === "undefined" && !globalThis.WebSocket) {
-  try {
-    const ws = await import(/* @vite-ignore */ "ws");
-    (globalThis as any).WebSocket = ws.default || ws;
-  } catch (err) {
-    console.error("Could not polyfill WebSocket for SSR:", err);
+  class DummyWebSocket {
+    static CONNECTING = 0;
+    static OPEN = 1;
+    static CLOSING = 2;
+    static CLOSED = 3;
+    constructor() {
+      // No-op
+    }
+    addEventListener() {}
+    removeEventListener() {}
+    send() {}
+    close() {}
   }
+  (globalThis as any).WebSocket = DummyWebSocket;
 }
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl) {
-  console.error("Missing env variable VITE_SUPABASE_URL");
-}
-if (!supabaseAnonKey) {
-  console.error("Missing env variable VITE_SUPABASE_ANON_KEY");
+export const hasSupabase = Boolean(supabaseUrl && supabaseAnonKey);
+
+if (!hasSupabase) {
+  console.error(
+    "Supabase configuration missing! VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is not defined. Falling back to static seed data.",
+  );
 }
 
+// Use a placeholder URL so createClient doesn't throw at import time when
+// the project hasn't been wired to Supabase yet. Any network call will
+// fail and trigger the seed-data fallback in companyApi.
 export const supabase = createClient(
-  supabaseUrl || "",
-  supabaseAnonKey || ""
+  supabaseUrl || "https://placeholder.supabase.co",
+  supabaseAnonKey || "placeholder-anon-key",
 );
+

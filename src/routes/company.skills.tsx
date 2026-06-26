@@ -247,8 +247,10 @@ function SkillIntelligencePage() {
                 key={skill.skill_set_id}
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
+                whileHover={{ y: -3 }}
+                whileTap={{ scale: 0.99 }}
                 transition={{ duration: 0.4, delay: idx * 0.03, ease: [0.22, 1, 0.36, 1] }}
-                className="rounded-2xl border border-slate-850/80 bg-gradient-to-b from-slate-900/40 to-slate-950/60 overflow-hidden shadow-xl backdrop-blur-sm transition-all duration-300 hover:bg-gradient-to-b hover:from-slate-900/95 hover:to-slate-950/90 hover:border-slate-500/80 hover:shadow-[0_0_30px_rgba(148,163,184,0.25)]"
+                className="rounded-2xl border border-slate-850/80 bg-gradient-to-b from-slate-900/40 to-slate-950/95 overflow-hidden shadow-xl transition-all duration-300 hover:bg-gradient-to-b hover:from-slate-900/95 hover:to-slate-950/90 hover:border-slate-500/80 hover:shadow-[0_0_30px_rgba(148,163,184,0.25)]"
               >
                 <button
                   type="button"
@@ -332,7 +334,8 @@ function SkillIntelligencePage() {
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      transition={{ height: { type: "spring", stiffness: 280, damping: 30 }, opacity: { duration: 0.2 } }}
+                      transition={{ height: { duration: 0.3, ease: [0.22, 1, 0.36, 1] }, opacity: { duration: 0.3 } }}
+                      className="overflow-hidden"
                     >
                       <div className="border-t border-slate-900 bg-slate-950/30 px-5 pb-6 pt-5">
                         <div className="flex items-center gap-2 mb-4 border-b border-slate-900 pb-3">
