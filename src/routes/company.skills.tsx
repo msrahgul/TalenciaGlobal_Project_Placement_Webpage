@@ -124,7 +124,7 @@ function SkillIntelligencePage() {
           {/* Bloom's Levels */}
           <div className="rounded-2xl border border-slate-850/80 bg-slate-950/30 p-5">
             <div className="mb-4 flex items-center gap-2">
-              <Zap className="h-4 w-4 text-blue-400" />
+              <Zap className="h-4 w-4 text-[var(--theme-text)]" />
               <h2 className="font-heading text-[10px] font-bold uppercase tracking-widest text-slate-400">
                 Bloom's Taxonomy Levels
               </h2>
@@ -192,7 +192,7 @@ function SkillIntelligencePage() {
             className="w-full flex items-center justify-between p-4 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 cursor-pointer"
           >
             <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-blue-400" />
+              <Zap className="h-4 w-4 text-[var(--theme-text)]" />
               <span>Taxonomy Legends & Guidelines</span>
             </div>
             <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showMobileLegends ? "rotate-180" : ""}`} />
@@ -250,7 +250,7 @@ function SkillIntelligencePage() {
                 whileHover={{ y: -3 }}
                 whileTap={{ scale: 0.99 }}
                 transition={{ duration: 0.4, delay: idx * 0.03, ease: [0.22, 1, 0.36, 1] }}
-                className="rounded-2xl border border-slate-850/80 bg-gradient-to-b from-slate-900/40 to-slate-950/95 overflow-hidden shadow-xl transition-all duration-300 hover:bg-gradient-to-b hover:from-slate-900/95 hover:to-slate-950/90 hover:border-slate-500/80 hover:shadow-[0_0_30px_rgba(148,163,184,0.25)]"
+                className="rounded-2xl border border-slate-850/80 bg-gradient-to-b from-slate-900/40 to-slate-950/95 overflow-hidden shadow-xl transition-all duration-300 hover:bg-gradient-to-b hover:from-[var(--theme-gradient-from)] hover:to-[var(--theme-gradient-to)] hover:border-[var(--theme-border)] hover:shadow-[0_0_30px_var(--theme-shadow)]"
               >
                 <button
                   type="button"
@@ -339,7 +339,7 @@ function SkillIntelligencePage() {
                     >
                       <div className="border-t border-slate-900 bg-slate-950/30 px-5 pb-6 pt-5">
                         <div className="flex items-center gap-2 mb-4 border-b border-slate-900 pb-3">
-                          <Zap className="h-3.5 w-3.5 text-blue-400 animate-pulse" />
+                          <Zap className="h-3.5 w-3.5 text-[var(--theme-text)] animate-pulse" />
                           <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                             10-Level Topic Learning Roadmap
                           </h4>
@@ -390,8 +390,8 @@ function SkillIntelligencePage() {
                                       <Lock className="h-3 w-3" /> Beyond Scope of Role
                                     </div>
                                   ) : (
-                                    <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-blue-400/80 uppercase tracking-wide">
-                                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-500" />
+                                    <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide" style={{ color: 'var(--theme-text-hover)' }}>
+                                      <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--theme-icon)' }} />
                                       Coverage Required
                                     </div>
                                   )}

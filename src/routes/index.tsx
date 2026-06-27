@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { memo, useDeferredValue, useMemo, useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import {
   MapPin,
   Search,
@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { useCompanies } from "@/lib/companyApi";
-import { type CompanySummary } from "@/lib/companyData";
+import { type CompanySummary, getCategoryAccent, getCategoryHue } from "@/lib/companyData";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { useCompany } from "@/context/CompanyContext";
 import { Input } from "@/components/ui/input";
@@ -54,13 +54,11 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Use willReadFrequently: false for pure draw-only canvas (no getImageData)
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
     let rafId: number;
     let paused = false;
-    // Cap DPR at 1.5 — halves the fill area on retina screens with minimal quality loss
     let dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     let W = window.innerWidth;
     let H = window.innerHeight;
@@ -75,7 +73,6 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
     };
     resize();
 
-    // ── Throttled mouse handler: skip updates faster than 16ms (1 frame)
     let lastMouseTime = 0;
     const onMouse = (e: MouseEvent) => {
       const now = performance.now();
@@ -84,27 +81,22 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
       mouseRef.current = { x: e.clientX, y: e.clientY };
     };
     const onLeave = () => { mouseRef.current = { x: -9999, y: -9999 }; };
-
-    // ── Page Visibility API: pause RAF when tab is hidden
     const onVisibility = () => { paused = document.hidden; };
 
-    // Keep animation running during scroll for smooth visual continuity.
     window.addEventListener("resize", resize, { passive: true });
     window.addEventListener("mousemove", onMouse, { passive: true });
     document.addEventListener("mouseleave", onLeave);
     document.addEventListener("visibilitychange", onVisibility);
 
-    // ── Pre-computed particle colors (avoid string replace every frame)
     const COLORS = [
-      { outer: "rgba(59,130,246,0.18)", fill: "rgba(59,130,246,0.75)" },
-      { outer: "rgba(139,92,246,0.18)", fill: "rgba(139,92,246,0.75)" },
-      { outer: "rgba(16,185,129,0.18)", fill: "rgba(16,185,129,0.75)" },
-      { outer: "rgba(245,158,11,0.15)", fill: "rgba(245,158,11,0.75)" },
-      { outer: "rgba(148,163,184,0.15)", fill: "rgba(148,163,184,0.70)" },
+      { outer: "rgba(59, 130, 246, 0.18)", fill: "rgba(59, 130, 246, 0.75)" },
+      { outer: "rgba(139, 92, 246, 0.18)", fill: "rgba(139, 92, 246, 0.75)" },
+      { outer: "rgba(16, 185, 129, 0.18)", fill: "rgba(16, 185, 129, 0.75)" },
+      { outer: "rgba(245, 158, 11, 0.15)", fill: "rgba(245, 158, 11, 0.75)" },
+      { outer: "rgba(148, 163, 184, 0.15)", fill: "rgba(148, 163, 184, 0.70)" }
     ];
 
-    // ── Reduced particle count: 18 instead of 32
-    const particles = Array.from({ length: 18 }, (_, i) => {
+    const particles = Array.from({ length: 40 }, (_, i) => {
       const dur = 18 + Math.random() * 24;
       const yFrac = Math.random();
       return {
@@ -126,7 +118,6 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
     let t = 0;
 
     const draw = () => {
-      // When paused just re-queue without touching canvas (preserves last frame)
       if (paused) {
         rafId = requestAnimationFrame(draw);
         return;
@@ -139,7 +130,6 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
       const my = mouseRef.current.y;
       const mouseActive = mx > -500;
 
-      // ── Update positions & mouse interaction
       for (const p of particles) {
         p.y -= p.spd;
         if (p.y < -50) { p.y = H + 50; p.lp = Math.random() * 100; }
@@ -165,7 +155,6 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
         p.dy = p.y + p.oy;
       }
 
-      // ── Connection lines (only near mouse, squared-distance check avoids sqrt)
       if (mouseActive) {
         ctx.lineWidth = 0.7;
         for (let i = 0; i < particles.length; i++) {
@@ -176,7 +165,7 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
             if (b.md > 160) continue;
             const ex = a.dx - b.dx, ey = a.dy - b.dy;
             const ed2 = ex * ex + ey * ey;
-            if (ed2 < 12100) { // < 110px
+            if (ed2 < 12100) {
               const alpha =
                 ((160 - a.md) / 160) *
                 ((160 - b.md) / 160) *
@@ -184,26 +173,24 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
               ctx.beginPath();
               ctx.moveTo(a.dx, a.dy);
               ctx.lineTo(b.dx, b.dy);
-              ctx.strokeStyle = `rgba(99,130,246,${alpha.toFixed(3)})`;
+              ctx.strokeStyle = `rgba(99,130,246,\${alpha.toFixed(3)})`;
               ctx.stroke();
             }
           }
         }
       }
 
-      // ── Draw particles — NO ctx.shadowBlur (biggest perf win)
       ctx.shadowBlur = 0;
       ctx.shadowColor = "transparent";
 
       for (const p of particles) {
-        // Outer ring (cheap: just a stroked circle)
+        const outerRadius = p.sz * 3.5 * (1 + Math.sin(t * 0.02 + p.swP) * 0.25);
         ctx.beginPath();
-        ctx.arc(p.dx, p.dy, p.sz * 3 + p.af * p.sz * 1.5, 0, Math.PI * 2);
+        ctx.arc(p.dx, p.dy, outerRadius, 0, Math.PI * 2);
         ctx.strokeStyle = p.col.outer;
-        ctx.lineWidth = 0.8;
+        ctx.lineWidth = 1;
         ctx.stroke();
 
-        // Inner filled dot
         ctx.beginPath();
         ctx.arc(p.dx, p.dy, p.sz, 0, Math.PI * 2);
         ctx.fillStyle = p.col.fill;
@@ -225,85 +212,17 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="pointer-events-none fixed inset-0 z-0 select-none"
-    />
+    <div className="pointer-events-none fixed inset-0 z-0 select-none bg-[#0a0a0c] overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-transparent to-transparent z-0" />
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full z-10"
+      />
+    </div>
   );
 });
 
-/* ═══════════════════════════════════════════════════════
-   CATEGORY → ACCENT COLOR MAPPING
-   Maps each category to a border stripe + badge palette
-   matching the stat-card accent stripe design language.
-   ═══════════════════════════════════════════════════════ */
-type CardAccent = {
-  stripe: string;      // gradient for the top stripe
-  hoverBorder: string; // border color class on hover
-  badgeBg: string;     // badge background
-  badgeBorder: string; // badge border
-  badgeText: string;   // badge text color
-};
 
-const getCategoryAccent = (category?: string | null): CardAccent => {
-  const cat = (category ?? "").toLowerCase();
-  if (cat.includes("finance") || cat.includes("banking") || cat.includes("fintech"))
-    return {
-      stripe: "from-transparent via-emerald-500/55 to-transparent",
-      hoverBorder: "hover:border-emerald-500/30",
-      badgeBg: "bg-emerald-500/10 group-hover:bg-emerald-500/20",
-      badgeBorder: "border-emerald-500/20 group-hover:border-emerald-400/30",
-      badgeText: "text-emerald-400 group-hover:text-emerald-300",
-    };
-  if (cat.includes("consult"))
-    return {
-      stripe: "from-transparent via-amber-500/55 to-transparent",
-      hoverBorder: "hover:border-amber-500/30",
-      badgeBg: "bg-amber-500/10 group-hover:bg-amber-500/20",
-      badgeBorder: "border-amber-500/20 group-hover:border-amber-400/30",
-      badgeText: "text-amber-400 group-hover:text-amber-300",
-    };
-  if (cat.includes("health") || cat.includes("pharma") || cat.includes("medic"))
-    return {
-      stripe: "from-transparent via-rose-500/55 to-transparent",
-      hoverBorder: "hover:border-rose-500/30",
-      badgeBg: "bg-rose-500/10 group-hover:bg-rose-500/20",
-      badgeBorder: "border-rose-500/20 group-hover:border-rose-400/30",
-      badgeText: "text-rose-400 group-hover:text-rose-300",
-    };
-  if (cat.includes("educat") || cat.includes("edtech") || cat.includes("learn"))
-    return {
-      stripe: "from-transparent via-orange-500/55 to-transparent",
-      hoverBorder: "hover:border-orange-500/30",
-      badgeBg: "bg-orange-500/10 group-hover:bg-orange-500/20",
-      badgeBorder: "border-orange-500/20 group-hover:border-orange-400/30",
-      badgeText: "text-orange-400 group-hover:text-orange-300",
-    };
-  if (cat.includes("manufactur") || cat.includes("auto") || cat.includes("aerospace"))
-    return {
-      stripe: "from-transparent via-cyan-500/55 to-transparent",
-      hoverBorder: "hover:border-cyan-500/30",
-      badgeBg: "bg-cyan-500/10 group-hover:bg-cyan-500/20",
-      badgeBorder: "border-cyan-500/20 group-hover:border-cyan-400/30",
-      badgeText: "text-cyan-400 group-hover:text-cyan-300",
-    };
-  if (cat.includes("e-comm") || cat.includes("ecomm") || cat.includes("retail") || cat.includes("logistic"))
-    return {
-      stripe: "from-transparent via-violet-500/55 to-transparent",
-      hoverBorder: "hover:border-violet-500/30",
-      badgeBg: "bg-violet-500/10 group-hover:bg-violet-500/20",
-      badgeBorder: "border-violet-500/20 group-hover:border-violet-400/30",
-      badgeText: "text-violet-400 group-hover:text-violet-300",
-    };
-  // Default: tech / software / IT
-  return {
-    stripe: "from-transparent via-blue-500/55 to-transparent",
-    hoverBorder: "hover:border-blue-500/30",
-    badgeBg: "bg-blue-500/10 group-hover:bg-blue-500/20",
-    badgeBorder: "border-blue-500/20 group-hover:border-blue-400/30",
-    badgeText: "text-blue-400 group-hover:text-blue-300",
-  };
-};
 
 const CompanyCard = memo(function CompanyCard({
   company, onSelect, index,
@@ -321,6 +240,16 @@ const CompanyCard = memo(function CompanyCard({
   const shortCategory = useMemo(() => catShortName(company.category), [company.category]);
   const accent = useMemo(() => getCategoryAccent(company.category), [company.category]);
 
+  const cardRef = useRef<HTMLButtonElement>(null);
+  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    cardRef.current.style.setProperty("--mouse-x", `${x}px`);
+    cardRef.current.style.setProperty("--mouse-y", `${y}px`);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -330,85 +259,108 @@ const CompanyCard = memo(function CompanyCard({
       transition={{ duration: 0.35, delay: Math.min(index * 0.02, 0.4), ease: [0.22, 1, 0.36, 1] }}
     >
       <button
+        ref={cardRef}
         type="button"
+        onMouseMove={handleMouseMove}
         onClick={() => onSelect(company)}
-        className={`group relative overflow-hidden flex flex-col w-full rounded-2xl text-left border border-white/[0.05] bg-slate-900/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 p-6 min-h-[248px] transition-all duration-300 ease-in-out hover:border-slate-800/50 hover:bg-gradient-to-br hover:from-slate-900/60 hover:to-slate-950/70 hover:shadow-[0_8px_32px_-8px_rgba(0,0,0,0.45)] ${accent.hoverBorder}`}
+        className={`group relative overflow-hidden flex flex-col w-full rounded-2xl text-left border border-white/[0.05] bg-slate-900/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 p-6 min-h-[248px] transition-all duration-300 ease-in-out hover:bg-slate-800/40 hover:shadow-[0_8px_32px_-8px_rgba(0,0,0,0.45)] ${accent.hoverBorder}`}
       >
-        {/* ── Category-colored top accent stripe (matches stat card design) ── */}
-        <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r ${accent.stripe}`} />
+        {/* Glow Effects */}
+        <div
+          className="pointer-events-none absolute inset-0 z-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+          style={{
+            background: "radial-gradient(400px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(255,255,255,0.06), transparent 40%)"
+          }}
+        />
+        <div
+          className="pointer-events-none absolute inset-0 z-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+          style={{
+            background: "radial-gradient(250px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(99, 102, 241, 0.8), transparent 40%) border-box",
+            WebkitMask: "linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0)",
+            WebkitMaskComposite: "xor",
+            maskComposite: "exclude",
+            border: "2px solid transparent"
+          }}
+        />
 
-        {/* ── Top Header: Logo + Category Badge ── */}
-        <div className="flex items-start justify-between gap-3 w-full">
-          <CompanyLogo
-            name={company.name}
-            logoUrl={company.logo_url}
-            website={company.website_url}
-            size={44}
-            className="shrink-0 rounded-xl border border-slate-800/80 bg-slate-900/80 p-0.5"
-          />
-          {shortCategory && (
-            <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider transition-all duration-200 ${accent.badgeBg} ${accent.badgeBorder} ${accent.badgeText}`}>
-              {shortCategory}
-            </span>
-          )}
-        </div>
+        {/* Main Content (Needs relative z-index to sit above glow) */}
+        <div className="relative z-10 flex flex-col w-full h-full">
+          {/* ── Category-colored top accent stripe (matches stat card design) ── */}
+          <div className={`absolute -top-6 -left-6 -right-6 h-px bg-gradient-to-r ${accent.stripe}`} />
 
-        {/* ── Title & Location ── */}
-        <div className="mt-4 flex-1 min-w-0">
-          <h3 className="truncate font-heading text-[15px] font-bold leading-snug text-slate-100 group-hover:text-white transition-colors duration-200">
-            {company.name}
-          </h3>
-          {primaryLocation ? (
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-slate-500 group-hover:text-slate-400 transition-colors duration-200">
-              <MapPin className="h-3 w-3 shrink-0 text-slate-600 group-hover:text-slate-400 transition-colors duration-200" />
-              <span className="truncate">{primaryLocation}</span>
-            </div>
-          ) : (
-            <div className="mt-1.5 text-[11px] text-slate-600 italic">Location unlisted</div>
-          )}
-        </div>
-
-        {/* ── Stats Grid ── */}
-        <div className="grid grid-cols-2 gap-2 mt-4 w-full">
-          <div className="flex items-center gap-2 rounded-xl bg-slate-950/20 border border-white/[0.04] px-3 py-2.5 group-hover:bg-slate-950/50 group-hover:border-slate-800/40 transition-all duration-300 ease-in-out">
-            <Users className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-            <span className="truncate text-[11px] font-medium text-slate-400 group-hover:text-slate-200 transition-colors duration-200">
-              {!nil(company.employee_size) ? company.employee_size!.replace(/\s+/g, "") : "—"}
-            </span>
+          {/* ── Top Header: Logo + Category Badge ── */}
+          <div className="flex items-start justify-between gap-3 w-full">
+            <CompanyLogo
+              name={company.name}
+              logoUrl={company.logo_url}
+              website={company.website_url}
+              size={44}
+              className="shrink-0 rounded-xl border border-slate-800/80 bg-slate-900/80 p-0.5"
+            />
+            {shortCategory && (
+              <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider transition-all duration-200 ${accent.badgeBg} ${accent.badgeBorder} ${accent.badgeText}`}>
+                {shortCategory}
+              </span>
+            )}
           </div>
-          <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-all duration-300 ease-in-out ${nil(growth)
+
+          {/* ── Title & Location ── */}
+          <div className="mt-4 flex-1 min-w-0">
+            <h3 className="truncate font-heading text-[15px] font-bold leading-snug text-slate-100 group-hover:text-white transition-colors duration-200">
+              {company.name}
+            </h3>
+            {primaryLocation ? (
+              <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-slate-500 group-hover:text-slate-400 transition-colors duration-200">
+                <MapPin className="h-3 w-3 shrink-0 text-slate-600 group-hover:text-slate-400 transition-colors duration-200" />
+                <span className="truncate">{primaryLocation}</span>
+              </div>
+            ) : (
+              <div className="mt-1.5 text-[11px] text-slate-600 italic">Location unlisted</div>
+            )}
+          </div>
+
+          {/* ── Stats Grid ── */}
+          <div className="grid grid-cols-2 gap-2 mt-4 w-full">
+            <div className="flex items-center gap-2 rounded-xl bg-slate-950/20 border border-white/[0.04] px-3 py-2.5 group-hover:bg-slate-950/50 group-hover:border-slate-800/40 transition-all duration-300 ease-in-out">
+              <Users className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+              <span className="truncate text-[11px] font-medium text-slate-400 group-hover:text-slate-200 transition-colors duration-200">
+                {!nil(company.employee_size) ? company.employee_size!.replace(/\s+/g, "") : "—"}
+              </span>
+            </div>
+            <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-all duration-300 ease-in-out ${nil(growth)
               ? "bg-slate-950/20 border-white/[0.04] group-hover:bg-slate-950/50 group-hover:border-slate-800/40"
               : neg
                 ? "bg-red-500/5 border-red-500/10 text-red-400"
                 : "bg-emerald-500/5 border-emerald-500/10 text-emerald-400"
-            }`}>
-            {nil(growth) ? (
-              <TrendingUp className="h-3.5 w-3.5 shrink-0 text-slate-600" />
-            ) : neg ? (
-              <TrendingDown className="h-3.5 w-3.5 shrink-0" />
-            ) : (
-              <TrendingUp className="h-3.5 w-3.5 shrink-0" />
-            )}
-            <span className="truncate text-[11px] font-semibold">
-              {!nil(growth) ? growth : "—"}
+              }`}>
+              {nil(growth) ? (
+                <TrendingUp className="h-3.5 w-3.5 shrink-0 text-slate-600" />
+              ) : neg ? (
+                <TrendingDown className="h-3.5 w-3.5 shrink-0" />
+              ) : (
+                <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+              )}
+              <span className="truncate text-[11px] font-semibold">
+                {!nil(growth) ? growth : "—"}
+              </span>
+            </div>
+          </div>
+
+          {/* ── Footer CTA ── */}
+          <div className="mt-5 pt-3.5 border-t border-white/[0.04] group-hover:border-slate-800/30 flex items-center justify-between w-full transition-all duration-300 ease-in-out">
+            <span className="flex items-center gap-1.5 text-[10px] text-slate-600 group-hover:text-slate-400 transition-colors duration-200 truncate max-w-[65%]">
+              {webDomain && (
+                <>
+                  <Globe className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{webDomain}</span>
+                </>
+              )}
+            </span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 group-hover:text-slate-300 transition-colors duration-200 shrink-0">
+              <span>Explore</span>
+              <ArrowRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5" />
             </span>
           </div>
-        </div>
-
-        {/* ── Footer CTA ── */}
-        <div className="mt-5 pt-3.5 border-t border-white/[0.04] group-hover:border-slate-800/30 flex items-center justify-between w-full transition-all duration-300 ease-in-out">
-          <span className="flex items-center gap-1.5 text-[10px] text-slate-600 group-hover:text-slate-400 transition-colors duration-200 truncate max-w-[65%]">
-            {webDomain && (
-              <>
-                <Globe className="h-3 w-3 shrink-0" />
-                <span className="truncate">{webDomain}</span>
-              </>
-            )}
-          </span>
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 group-hover:text-slate-300 transition-colors duration-200 shrink-0">
-            <span>Explore</span>
-            <ArrowRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5" />
-          </span>
         </div>
       </button>
     </motion.div>
@@ -443,7 +395,7 @@ interface HomepageAnalyticsDashboardProps {
 }
 
 function HomepageAnalyticsDashboard({ companies }: HomepageAnalyticsDashboardProps) {
-  const [showDashboard, setShowDashboard] = useState(true);
+  const [showDashboard, setShowDashboard] = useState(false);
 
   // 1. Calculations
   const totalCompanies = companies.length;
@@ -818,21 +770,53 @@ function IndexPage() {
   const navigate = useNavigate();
   const { selectCompany } = useCompany();
   const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "sector">("name");
+  const [filterSector, setFilterSector] = useState<string | null>(null);
   const { data: companies = [], isLoading, isError, refetch } = useCompanies();
+
+  const sectors = useMemo(() => {
+    const set = new Set<string>();
+    companies.forEach((c) => {
+      const cat = catShortName(c.category);
+      if (cat) set.add(cat);
+    });
+    return Array.from(set).sort();
+  }, [companies]);
 
   const deferred = useDeferredValue(query);
   const filtered = useMemo(() => {
     const q = deferred.trim().toLowerCase();
-    if (!q) return companies;
-    return companies.filter((c) => {
-      return (
-        c.name.toLowerCase().includes(q) ||
-        c.short_name.toLowerCase().includes(q) ||
-        (c.office_locations ?? "").toLowerCase().includes(q) ||
-        (c.operating_countries ?? "").toLowerCase().includes(q)
-      );
-    });
-  }, [companies, deferred]);
+    let result = [...companies];
+    
+    if (filterSector) {
+      result = result.filter((c) => catShortName(c.category) === filterSector);
+    }
+
+    if (q) {
+      result = result.filter((c) => {
+        return (
+          c.name.toLowerCase().includes(q) ||
+          c.short_name.toLowerCase().includes(q) ||
+          (c.office_locations ?? "").toLowerCase().includes(q) ||
+          (c.operating_countries ?? "").toLowerCase().includes(q) ||
+          (c.category ?? "").toLowerCase().includes(q)
+        );
+      });
+    }
+
+    if (sortBy === "sector") {
+      result.sort((a, b) => {
+        const catA = a.category || "";
+        const catB = b.category || "";
+        if (catA !== catB) return catA.localeCompare(catB);
+        return a.name.localeCompare(b.name);
+      });
+    } else {
+      result.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    
+    return result;
+  }, [companies, deferred, sortBy, filterSector]);
 
   const handleSelect = (c: CompanySummary) => {
     selectCompany({ companyId: c.company_id, companyName: c.name, logoUrl: c.logo_url });
@@ -883,36 +867,86 @@ function IndexPage() {
             students and faculty of {COLLEGE_NAME}.
           </motion.p>
 
-          {/* Search bar */}
+          {/* Search bar & Sort Controls */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.24, ease: [0.22, 1, 0.36, 1] }}
-            className="glass-search relative mt-10 flex max-w-xl items-center px-5"
+            className="mt-10 max-w-xl"
           >
-            <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search companies, locations, categories…"
-              className="h-12 flex-1 border-0 bg-transparent px-3 text-[14px] text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0"
-            />
-            <AnimatePresence>
-              {query && (
-                <motion.button
-                  type="button"
-                  initial={{ opacity: 0, scale: 0.7 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.7 }}
-                  transition={{ duration: 0.12 }}
-                  onClick={() => setQuery("")}
-                  className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  aria-label="Clear search"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </motion.button>
+            <div className="glass-search relative flex items-center px-5">
+              <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search companies, locations, categories…"
+                className="h-12 flex-1 border-0 bg-transparent px-3 text-[14px] text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0"
+              />
+              <AnimatePresence>
+                {query && (
+                  <motion.button
+                    type="button"
+                    initial={{ opacity: 0, scale: 0.7 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.7 }}
+                    transition={{ duration: 0.12 }}
+                    onClick={() => setQuery("")}
+                    className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
+            
+            <div className="mt-4 flex flex-col gap-3 px-1">
+              {/* Sort Controls */}
+              <div className="flex items-center gap-3 text-[13px] text-muted-foreground">
+                 <span className="font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Sort by:</span>
+                 <button 
+                   onClick={() => setSortBy("name")} 
+                   className={`px-3 py-1 rounded-full transition-colors border ${sortBy === "name" ? "bg-slate-800 text-slate-200 border-slate-700" : "bg-transparent border-transparent hover:bg-slate-800/50 hover:border-slate-800"}`}
+                 >
+                   Company Name
+                 </button>
+                 <button 
+                   onClick={() => setSortBy("sector")} 
+                   className={`px-3 py-1 rounded-full transition-colors border ${sortBy === "sector" ? "bg-slate-800 text-slate-200 border-slate-700" : "bg-transparent border-transparent hover:bg-slate-800/50 hover:border-slate-800"}`}
+                 >
+                   Industry Sector
+                 </button>
+              </div>
+
+              {/* Filter Controls */}
+              {sectors.length > 0 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-1">
+                  <span className="font-semibold text-slate-500 uppercase tracking-wider text-[10px] mr-1 shrink-0">Filter:</span>
+                  <button
+                    onClick={() => setFilterSector(null)}
+                    className={`shrink-0 px-3 py-1 rounded-full text-[12px] font-medium transition-colors border ${filterSector === null ? "bg-slate-800 text-slate-200 border-slate-700 shadow-[0_0_12px_rgba(148,163,184,0.15)]" : "bg-transparent text-slate-400 border-slate-800/60 hover:bg-slate-800/50"}`}
+                  >
+                    All
+                  </button>
+                  {sectors.map((s) => {
+                    const isActive = filterSector === s;
+                    const accent = getCategoryAccent(s);
+                    const hue = getCategoryHue(s);
+                    
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => setFilterSector(isActive ? null : s)}
+                        className={`group shrink-0 px-3 py-1 rounded-full text-[12px] font-medium transition-colors border ${isActive ? `${accent.badgeBg} ${accent.badgeText} ${accent.badgeBorder}` : "bg-transparent text-slate-400 border-slate-800/60 hover:bg-slate-800/50"}`}
+                        style={isActive ? { boxShadow: `0 0 12px hsla(${hue}, 80%, 60%, 0.2)` } : undefined}
+                      >
+                        {s}
+                      </button>
+                    );
+                  })}
+                </div>
               )}
-            </AnimatePresence>
+            </div>
           </motion.div>
         </div>
       </header>

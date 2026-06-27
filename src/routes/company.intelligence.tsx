@@ -45,7 +45,7 @@ function renderValue(value: unknown, type?: IntelField["type"]): ReactNode {
         href={s}
         target="_blank"
         rel="noreferrer"
-        className="inline-flex items-center gap-1.5 font-semibold text-blue-400 hover:text-blue-300 transition-colors group/link"
+        className="inline-flex items-center gap-1.5 font-semibold text-[var(--theme-text)] hover:text-[var(--theme-text-hover)] transition-colors group/link"
       >
         <span className="truncate max-w-[200px] sm:max-w-[300px]">{s.replace(/^https?:\/\/(www\.)?/, '')}</span>
         <ExternalLink className="h-3.5 w-3.5 transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 shrink-0" />
@@ -96,7 +96,7 @@ function renderValue(value: unknown, type?: IntelField["type"]): ReactNode {
 
   if (type === "paragraph") {
     return (
-      <p className="leading-relaxed text-slate-300 text-sm border-l-2 border-blue-500/30 bg-blue-500/[0.02] pl-3 py-1 rounded-r-md mt-0.5 whitespace-pre-line">
+      <p className="leading-relaxed text-slate-300 text-sm mt-0.5 whitespace-pre-line">
         {s}
       </p>
     );
@@ -130,7 +130,7 @@ function BentoFieldCell({
       className={`group/cell relative flex flex-col gap-1.5 rounded-xl border transition-all duration-300 ease-in-out ${
         empty
           ? "border-white/[0.03] bg-slate-900/[0.06] opacity-40 hover:opacity-65 hover:border-slate-800/30 hover:bg-slate-900/15 p-3"
-          : "border-white/[0.05] bg-slate-900/[0.12] hover:border-slate-700/50 hover:bg-slate-900/35 hover:shadow-[0_4px_16px_-4px_rgba(59,130,246,0.08)] p-4"
+          : "border-white/[0.05] bg-slate-900/[0.12] hover:border-[var(--theme-border)] hover:bg-[var(--theme-bg-faint)] hover:shadow-[0_4px_16px_-4px_var(--theme-shadow)] p-4"
       } ${colSpan}`}
     >
       <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 transition-colors group-hover/cell:text-slate-400">
@@ -191,21 +191,21 @@ function IntelligenceOverviewDashboard({ profile }: DashboardProps) {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {/* YoY Growth Card */}
       {hasGrowth && (
-        <div className="rounded-2xl border border-white/[0.05] bg-slate-900/15 p-4 flex flex-col justify-between h-28 hover:border-slate-800/80 hover:bg-slate-950/50 hover:shadow-[0_4px_20px_-4px_rgba(16,185,129,0.12)] transition-all duration-300 ease-in-out">
+        <div className="rounded-2xl border border-white/[0.05] bg-slate-900/15 p-4 flex flex-col justify-between h-28 hover:border-slate-800/80 hover:bg-slate-950/50 hover:shadow-[0_4px_20px_-4px_var(--theme-shadow)] transition-all duration-300 ease-in-out">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-[10px] font-bold uppercase tracking-widest">YoY Growth</span>
             <Activity className="h-4 w-4 text-slate-400" />
           </div>
           <div className="flex items-end justify-between">
             <div className="flex flex-col">
-              <span className={`text-xl font-bold font-heading tabular-nums leading-none ${isNegGrowth ? "text-red-400" : "text-emerald-400"}`}>
+              <span className={`text-xl font-bold font-heading tabular-nums leading-none ${isNegGrowth ? "text-red-400" : "text-[var(--theme-text)]"}`}>
                 {growthRaw}
               </span>
               <span className="text-[10px] text-slate-500 font-semibold mt-1">Growth Indicator</span>
             </div>
             
             {/* Sparkline Graph */}
-            <svg className={`w-16 h-8 shrink-0 ${isNegGrowth ? "text-red-500/80" : "text-emerald-500/80"}`} viewBox="0 0 50 20">
+            <svg className={`w-16 h-8 shrink-0 ${isNegGrowth ? "text-red-500/80" : "text-[var(--theme-icon)]"}`} viewBox="0 0 50 20" style={{ opacity: isNegGrowth ? 1 : 0.8 }}>
               <path
                 d={isNegGrowth ? "M0 2 L 12 8 L 25 7 L 37 14 L 50 18" : "M0 18 L 12 12 L 25 14 L 37 5 L 50 2"}
                 fill="none"
@@ -221,10 +221,10 @@ function IntelligenceOverviewDashboard({ profile }: DashboardProps) {
 
       {/* Rating Card */}
       {hasRating && (
-        <div className="rounded-2xl border border-white/[0.05] bg-slate-900/15 p-4 flex flex-col justify-between h-28 hover:border-slate-800/80 hover:bg-slate-950/50 hover:shadow-[0_4px_20px_-4px_rgba(245,158,11,0.10)] transition-all duration-300 ease-in-out">
+        <div className="rounded-2xl border border-white/[0.05] bg-slate-900/15 p-4 flex flex-col justify-between h-28 hover:border-slate-800/80 hover:bg-slate-950/50 hover:shadow-[0_4px_20px_-4px_var(--theme-shadow)] transition-all duration-300 ease-in-out">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-[10px] font-bold uppercase tracking-widest">{ratingLabel}</span>
-            <Star className="h-4 w-4 text-amber-500" />
+            <Star className="h-4 w-4 text-[var(--theme-icon)]" />
           </div>
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
@@ -242,7 +242,8 @@ function IntelligenceOverviewDashboard({ profile }: DashboardProps) {
                   cx="20"
                   cy="20"
                   r={radialRadius}
-                  className="text-amber-500/80"
+                  className="text-[var(--theme-text)]"
+                  style={{ opacity: 0.8 }}
                   strokeWidth="2.5"
                   strokeDasharray={radialCircumference}
                   strokeDashoffset={radialOffset}
@@ -251,7 +252,7 @@ function IntelligenceOverviewDashboard({ profile }: DashboardProps) {
                   fill="transparent"
                 />
               </svg>
-              <Star className="absolute h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+              <Star className="absolute h-3.5 w-3.5 fill-transparent text-[var(--theme-icon)]" style={{ fill: "var(--theme-icon)" }} />
             </div>
           </div>
         </div>
@@ -259,10 +260,10 @@ function IntelligenceOverviewDashboard({ profile }: DashboardProps) {
 
       {/* Workforce Scale Card */}
       {hasSize && (
-        <div className="rounded-2xl border border-white/[0.05] bg-slate-900/15 p-4 flex flex-col justify-between h-28 hover:border-slate-800/80 hover:bg-slate-950/50 hover:shadow-[0_4px_20px_-4px_rgba(59,130,246,0.10)] transition-all duration-300 ease-in-out">
+        <div className="rounded-2xl border border-white/[0.05] bg-slate-900/15 p-4 flex flex-col justify-between h-28 hover:border-slate-800/80 hover:bg-slate-950/50 hover:shadow-[0_4px_20px_-4px_var(--theme-shadow)] transition-all duration-300 ease-in-out">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-[10px] font-bold uppercase tracking-widest">Workforce Scale</span>
-            <Users className="h-4 w-4 text-blue-400" />
+            <Users className="h-4 w-4 text-[var(--theme-icon)]" />
           </div>
           <div className="flex flex-col gap-2">
             <span className="text-lg font-bold font-heading text-slate-100 truncate leading-none">
@@ -271,8 +272,11 @@ function IntelligenceOverviewDashboard({ profile }: DashboardProps) {
             {/* Horizontal capacity bar */}
             <div className="h-2 rounded-full bg-slate-950 border border-slate-900/50 overflow-hidden relative">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500"
-                style={{ width: sizeRaw.toLowerCase().includes("10k") || sizeRaw.toLowerCase().includes("50k") || sizeRaw.toLowerCase().includes("100k") || parseFloat(sizeRaw) > 10000 ? "85%" : "45%" }}
+                className="h-full rounded-full"
+                style={{
+                  background: "linear-gradient(90deg, var(--theme-gradient-from), var(--theme-text))",
+                  width: sizeRaw.toLowerCase().includes("10k") || sizeRaw.toLowerCase().includes("50k") || sizeRaw.toLowerCase().includes("100k") || parseFloat(sizeRaw) > 10000 ? "85%" : "45%"
+                }}
               />
             </div>
           </div>
@@ -281,10 +285,10 @@ function IntelligenceOverviewDashboard({ profile }: DashboardProps) {
 
       {/* Tech Adoption Card */}
       {hasTech && (
-        <div className="rounded-2xl border border-white/[0.05] bg-slate-900/15 p-4 flex flex-col justify-between h-28 hover:border-slate-800/80 hover:bg-slate-950/50 hover:shadow-[0_4px_20px_-4px_rgba(139,92,246,0.10)] transition-all duration-300 ease-in-out">
+        <div className="rounded-2xl border border-white/[0.05] bg-slate-900/15 p-4 flex flex-col justify-between h-28 hover:border-slate-800/80 hover:bg-slate-950/50 hover:shadow-[0_4px_20px_-4px_var(--theme-shadow)] transition-all duration-300 ease-in-out">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-[10px] font-bold uppercase tracking-widest">{techLabel}</span>
-            <Award className="h-4 w-4 text-violet-400" />
+            <Award className="h-4 w-4 text-[var(--theme-icon)]" />
           </div>
           <div className="flex items-end justify-between">
             <div className="flex flex-col">
@@ -301,7 +305,8 @@ function IntelligenceOverviewDashboard({ profile }: DashboardProps) {
                 return (
                   <span
                     key={i}
-                    className={`h-4 w-1.5 rounded-sm ${filled ? "bg-violet-500/80 shadow-[0_0_8px_rgba(139,92,246,0.3)]" : "bg-slate-900"}`}
+                    className={`h-4 w-1.5 rounded-sm ${filled ? "shadow-[0_0_8px_var(--theme-shadow)]" : "bg-slate-900"}`}
+                    style={filled ? { backgroundColor: "var(--theme-text)", opacity: 0.8 } : undefined}
                   />
                 );
               })}
@@ -456,7 +461,7 @@ function CompanyIntelligencePage() {
           <div className="flex items-center gap-2.5">
             <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Sector:</span>
             {!isNullish(profile.category) ? (
-              <span className="inline-flex items-center rounded-lg bg-blue-500/10 border border-blue-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-400">
+              <span className="inline-flex items-center rounded-lg bg-[var(--theme-bg)] border border-[var(--theme-border)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--theme-text)]">
                 {asString(profile.category)}
               </span>
             ) : (
@@ -465,14 +470,14 @@ function CompanyIntelligencePage() {
           </div>
           <div className="flex gap-2">
             {!isNullish(profile.website_url) && (
-              <Button asChild size="sm" variant="outline" className="rounded-full border-slate-800/80 bg-slate-900/40 text-xs text-slate-350 hover:bg-blue-500/10 hover:border-blue-500/20 hover:text-blue-400 hover:scale-[1.03] transition-all">
+              <Button asChild size="sm" variant="outline" className="rounded-full border-slate-800/80 bg-slate-900/40 text-xs text-slate-350 hover:bg-[var(--theme-bg)] hover:border-[var(--theme-border)] hover:text-[var(--theme-text)] hover:scale-[1.03] transition-all">
                 <a href={asString(profile.website_url)} target="_blank" rel="noreferrer">
                   <ExternalLink className="mr-1.5 h-3.5 w-3.5" /> Website
                 </a>
               </Button>
             )}
             {!isNullish(profile.linkedin_url) && (
-              <Button asChild size="sm" variant="outline" className="rounded-full border-slate-800/80 bg-slate-900/40 text-xs text-slate-350 hover:bg-blue-500/10 hover:border-blue-500/20 hover:text-blue-400 hover:scale-[1.03] transition-all">
+              <Button asChild size="sm" variant="outline" className="rounded-full border-slate-800/80 bg-slate-900/40 text-xs text-slate-350 hover:bg-[var(--theme-bg)] hover:border-[var(--theme-border)] hover:text-[var(--theme-text)] hover:scale-[1.03] transition-all">
                 <a href={asString(profile.linkedin_url)} target="_blank" rel="noreferrer">
                   <Linkedin className="mr-1.5 h-3.5 w-3.5" /> LinkedIn
                 </a>
@@ -495,17 +500,17 @@ function CompanyIntelligencePage() {
               onClick={() => scrollToSection(i)}
               className="relative inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors duration-150 focus-visible:outline-none cursor-pointer"
               style={{
-                color: activeIdx === i ? "#60a5fa" : "#94a3b8",
+                color: activeIdx === i ? "var(--theme-text)" : "#94a3b8",
                 zIndex: 1,
               }}
             >
               {activeIdx === i && (
                 <motion.span
                   layoutId="tab-indicator"
-                  className="absolute inset-0 rounded-xl border border-blue-500/20"
+                  className="absolute inset-0 rounded-xl border border-[var(--theme-border)]"
                   style={{
-                    background: "linear-gradient(135deg, rgba(59,130,246,0.18) 0%, rgba(139,92,246,0.1) 100%)",
-                    boxShadow: "0 4px 12px -2px rgba(59,130,246,0.15)",
+                    background: "linear-gradient(135deg, var(--theme-gradient-from) 0%, var(--theme-gradient-to) 100%)",
+                    boxShadow: "0 4px 12px -2px var(--theme-shadow)",
                   }}
                   transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
                 />
@@ -538,17 +543,17 @@ function CompanyIntelligencePage() {
                 onClick={() => scrollToSection(i)}
                 className={`group flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-semibold transition-all duration-200 cursor-pointer ${
                   isActive
-                    ? "bg-slate-900/40 border border-slate-800/80 text-blue-400 shadow-[0_4px_12px_-2px_rgba(59,130,246,0.1)]"
+                    ? "bg-slate-900/40 border border-[var(--theme-border)] text-[var(--theme-text)] shadow-[0_4px_12px_-2px_var(--theme-shadow)]"
                     : "border border-transparent text-slate-400 hover:bg-slate-900/10 hover:text-slate-200"
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <s.icon className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-blue-400 animate-pulse" : "text-slate-500 group-hover:text-slate-300"}`} />
+                  <s.icon className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-[var(--theme-icon)] animate-pulse" : "text-slate-500 group-hover:text-slate-300"}`} />
                   <span className="truncate">{s.title}</span>
                 </div>
                 <span className={`text-[10px] font-bold tabular-nums px-2 py-0.5 rounded-full border transition-colors shrink-0 ${
                   isActive
-                    ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                    ? "bg-[var(--theme-bg)] border-[var(--theme-border)] text-[var(--theme-text)]"
                     : "bg-slate-950/60 border-slate-900/80 text-slate-500 group-hover:text-slate-400"
                 }`}>
                   {populated}/{s.fields.length}
@@ -571,14 +576,15 @@ function CompanyIntelligencePage() {
               <div
                 key={section.id}
                 ref={(el) => { sectionRefs.current[i] = el; }}
-                className="scroll-mt-[88px] lg:scroll-mt-[88px] rounded-2xl border border-white/[0.04] bg-slate-900/[0.07] backdrop-blur-[2px] p-6 transition-all duration-300 ease-in-out hover:bg-gradient-to-b hover:from-slate-900/70 hover:to-slate-950/80 hover:border-slate-700/60 hover:shadow-[0_0_30px_rgba(99,102,241,0.12)]"
+                className="scroll-mt-[88px] lg:scroll-mt-[88px] rounded-2xl border border-white/[0.04] bg-slate-900/[0.07] backdrop-blur-[2px] p-6 transition-all duration-300 ease-in-out hover:bg-[var(--theme-bg-faint)] hover:border-[var(--theme-border)] hover:shadow-[0_0_30px_var(--theme-shadow)]"
               >
                 <div className="mb-5 flex items-center justify-between gap-3 border-b border-slate-900 pb-4">
                   <div className="flex items-center gap-3">
                     <div
-                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.08)] bg-gradient-to-br from-blue-500/15 to-violet-500/5 shrink-0"
+                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--theme-border)] shadow-[0_0_15px_var(--theme-shadow)] shrink-0"
+                      style={{ background: "linear-gradient(135deg, var(--theme-gradient-from) 0%, var(--theme-gradient-to) 100%)" }}
                     >
-                      <section.icon className="h-4.5 w-4.5 text-blue-400" style={{ width: 18, height: 18 }} />
+                      <section.icon className="h-4.5 w-4.5 text-[var(--theme-icon)]" style={{ width: 18, height: 18 }} />
                     </div>
                     <h2 className="font-heading text-lg font-bold text-slate-100 tracking-tight">
                       {section.title}

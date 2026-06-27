@@ -14,6 +14,7 @@ import { useCompany, readStoredCompany } from "@/context/CompanyContext";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { useCompanyProfile } from "@/lib/companyApi";
 import { CompanyAIChatbot } from "@/components/CompanyAIChatbot";
+import { getCategoryAccent, getCategoryHue } from "@/lib/companyData";
 
 export const Route = createFileRoute("/company")({
   beforeLoad: ({ location }) => {
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/company")({
   component: CompanyLayout,
 });
 
-const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
+const PlacementNetworkBackground = memo(function PlacementNetworkBackground({ category }: { category?: string }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mouseRef = useRef({ x: -9999, y: -9999 });
 
@@ -37,7 +38,6 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
 
     let rafId: number;
     let paused = false;
-    // Cap DPR at 1.5 to reduce fill rate overhead on high-DPI screens
     let dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     let W = window.innerWidth;
     let H = window.innerHeight;
@@ -52,7 +52,6 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
     };
     resize();
 
-    // Throttle mouse moves to avoid high frequency triggers
     let lastMouseTime = 0;
     const onMouse = (e: MouseEvent) => {
       const now = performance.now();
@@ -61,8 +60,6 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
       mouseRef.current = { x: e.clientX, y: e.clientY };
     };
     const onLeave = () => { mouseRef.current = { x: -9999, y: -9999 }; };
-
-    // Pause when tab is inactive
     const onVisibility = () => { paused = document.hidden; };
 
     window.addEventListener("resize", resize, { passive: true });
@@ -70,16 +67,21 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
     document.addEventListener("mouseleave", onLeave);
     document.addEventListener("visibilitychange", onVisibility);
 
+    // Get hue based on company category
+    const h1 = getCategoryHue(category);
+    const h2 = (h1 + 40) % 360;
+    const h3 = (h1 + 120) % 360;
+    
     const COLORS = [
-      { outer: "rgba(59, 130, 246, 0.18)", fill: "rgba(59, 130, 246, 0.75)" },
-      { outer: "rgba(139, 92, 246, 0.18)", fill: "rgba(139, 92, 246, 0.75)" },
-      { outer: "rgba(16, 185, 129, 0.18)", fill: "rgba(16, 185, 129, 0.75)" },
-      { outer: "rgba(245, 158, 11, 0.15)", fill: "rgba(245, 158, 11, 0.75)" },
-      { outer: "rgba(148, 163, 184, 0.15)", fill: "rgba(148, 163, 184, 0.70)" }
+      { outer: `hsla(${h1}, 85%, 60%, 0.18)`, fill: `hsla(${h1}, 85%, 60%, 0.75)` },
+      { outer: `hsla(${h2}, 85%, 60%, 0.18)`, fill: `hsla(${h2}, 85%, 60%, 0.75)` },
+      { outer: `hsla(${h3}, 80%, 65%, 0.18)`, fill: `hsla(${h3}, 80%, 65%, 0.75)` },
+      { outer: `hsla(${(h1 + 200) % 360}, 75%, 65%, 0.15)`, fill: `hsla(${(h1 + 200) % 360}, 75%, 65%, 0.75)` },
+      { outer: `hsla(${(h1 + 180) % 360}, 60%, 75%, 0.15)`, fill: `hsla(${(h1 + 180) % 360}, 60%, 75%, 0.70)` }
     ];
 
-    // Reduced count from 32 to 18
-    const particles = Array.from({ length: 18 }, (_, i) => {
+    // Increased count to 40 to match home page
+    const particles = Array.from({ length: 40 }, (_, i) => {
       const dur = 18 + Math.random() * 24;
       const yFrac = Math.random();
       return {
@@ -139,7 +141,7 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
         p.dy = p.y + p.oy;
       }
 
-      // Draw connections using squared-distance to avoid Math.sqrt in nested loop
+      // Draw connections
       if (mouseActive) {
         ctx.lineWidth = 0.7;
         for (let i = 0; i < particles.length; i++) {
@@ -158,14 +160,13 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
               ctx.beginPath();
               ctx.moveTo(a.dx, a.dy);
               ctx.lineTo(b.dx, b.dy);
-              ctx.strokeStyle = `rgba(99,130,246,${alpha.toFixed(3)})`;
+              ctx.strokeStyle = `hsla(${h1}, 80%, 65%, ${alpha.toFixed(3)})`;
               ctx.stroke();
             }
           }
         }
       }
 
-      // Draw particles (disable shadowBlur for massive performance boost)
       ctx.shadowBlur = 0;
       ctx.shadowColor = "transparent";
 
@@ -195,13 +196,13 @@ const PlacementNetworkBackground = memo(function PlacementNetworkBackground() {
       document.removeEventListener("mouseleave", onLeave);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, []);
+  }, [category]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="pointer-events-none fixed inset-0 z-0 select-none overflow-hidden"
-    />
+    <div className="pointer-events-none fixed inset-0 z-0 select-none bg-[#0a0a0c] overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-transparent to-transparent z-0" />
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-10" />
+    </div>
   );
 });
 
@@ -226,10 +227,26 @@ function CompanyLayout() {
 
   if (!selected) return null;
 
+  const accent = getCategoryAccent(profile?.category as string | undefined);
+  const activeClass = `${accent.badgeBg} ${accent.badgeText} border ${accent.badgeBorder} shadow-sm font-bold`;
+
+  const h1 = getCategoryHue(profile?.category as string | undefined);
+  const themeVars = {
+    "--theme-text": `hsla(${h1}, 85%, 65%, 1)`,
+    "--theme-text-hover": `hsla(${h1}, 85%, 75%, 1)`,
+    "--theme-border": `hsla(${h1}, 85%, 60%, 0.25)`,
+    "--theme-bg": `hsla(${h1}, 85%, 60%, 0.12)`,
+    "--theme-bg-faint": `hsla(${h1}, 85%, 60%, 0.02)`,
+    "--theme-shadow": `hsla(${h1}, 85%, 60%, 0.15)`,
+    "--theme-icon": `hsla(${h1}, 85%, 65%, 1)`,
+    "--theme-gradient-from": `hsla(${h1}, 85%, 60%, 0.18)`,
+    "--theme-gradient-to": `hsla(${h1}, 85%, 60%, 0.05)`,
+  } as React.CSSProperties;
+
   return (
-    <div className="mesh-bg min-h-screen w-full flex flex-col relative">
+    <div className="mesh-bg min-h-screen w-full flex flex-col relative" style={themeVars}>
       <div className="grid-bg absolute inset-0 z-0 pointer-events-none" />
-      <PlacementNetworkBackground />
+      <PlacementNetworkBackground category={profile?.category as string | undefined} />
 
 
       {/* ── UNIFIED STICKY TOP HEADER ─────────────────── */}
@@ -286,7 +303,7 @@ function CompanyLayout() {
                     href={String(profile.website_url)}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors"
+                    className={`flex items-center gap-1 hover:underline transition-colors ${accent.badgeText.replace("group-hover:", "hover:")}`}
                   >
                     <Globe className="h-3 w-3" /> Website
                   </a>
@@ -300,9 +317,9 @@ function CompanyLayout() {
             <div className="flex bg-slate-900/40 p-1 border border-slate-850/80 rounded-full">
               <Link
                 to="/company/intelligence"
-                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${pathname === "/company/intelligence"
-                  ? "bg-blue-500/15 text-blue-400 border border-blue-500/10 shadow-[0_2px_8px_-2px_rgba(59,130,246,0.25)] font-bold"
-                  : "text-slate-400 hover:text-slate-200 border border-transparent"
+                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs transition-all cursor-pointer ${pathname === "/company/intelligence"
+                  ? activeClass
+                  : "text-slate-400 hover:text-slate-200 border border-transparent font-medium"
                   }`}
               >
                 <motion.div whileHover={{ rotate: -8 }} whileTap={{ scale: 0.95 }}>
@@ -312,9 +329,9 @@ function CompanyLayout() {
               </Link>
               <Link
                 to="/company/skills"
-                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${pathname === "/company/skills"
-                  ? "bg-blue-500/15 text-blue-400 border border-blue-500/10 shadow-[0_2px_8px_-2px_rgba(59,130,246,0.25)] font-bold"
-                  : "text-slate-400 hover:text-slate-200 border border-transparent"
+                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs transition-all cursor-pointer ${pathname === "/company/skills"
+                  ? activeClass
+                  : "text-slate-400 hover:text-slate-200 border border-transparent font-medium"
                   }`}
               >
                 <motion.div whileHover={{ rotate: 12 }} whileTap={{ scale: 0.95 }}>

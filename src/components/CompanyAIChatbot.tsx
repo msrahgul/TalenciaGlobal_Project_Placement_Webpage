@@ -93,8 +93,26 @@ function ThinkingDots() {
   );
 }
 
-function MessageBubble({ msg }: { msg: Message }) {
+function MessageBubble({ msg, onSuggestionClick }: { msg: Message; onSuggestionClick?: (q: string) => void }) {
   const isUser = msg.role === "user";
+
+  let displayContent = msg.content;
+  let suggestions: string[] = [];
+
+  if (!isUser && displayContent.includes("Suggested questions:")) {
+    const parts = displayContent.split(/---?\s*\nSuggested questions:/);
+    if (parts.length > 1) {
+      displayContent = parts[0].trim();
+      const suggestionsText = parts[1];
+      const lines = suggestionsText.split('\n');
+      lines.forEach(line => {
+        const match = line.match(/^\d+\.\s*(.+)/);
+        if (match && match[1]) {
+          suggestions.push(match[1].replace(/\*/g, '').trim());
+        }
+      });
+    }
+  }
 
   return (
     <motion.div
@@ -114,7 +132,7 @@ function MessageBubble({ msg }: { msg: Message }) {
         {isUser ? <User className="h-3 w-3" /> : <Bot className="h-3 w-3" />}
       </div>
 
-      {/* Bubble */}
+      {/* Bubble & Suggestions */}
       <div className={`max-w-[82%] ${isUser ? "items-end" : "items-start"} flex flex-col gap-1`}>
         <div
           className={`rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap break-words ${
@@ -124,17 +142,38 @@ function MessageBubble({ msg }: { msg: Message }) {
               ? "bg-red-500/10 border border-red-500/20 text-red-300 rounded-bl-sm"
               : "chat-bubble-ai rounded-bl-sm"
           }`}
-          // Render simple markdown bold (**text**)
           dangerouslySetInnerHTML={{
-            __html: msg.content
+            __html: displayContent
               .replace(/&/g, "&amp;")
               .replace(/</g, "&lt;")
               .replace(/>/g, "&gt;")
+              .replace(/^### (.*?)$/gm, "<div class='text-[14px] font-bold text-slate-100 mt-2 mb-1'>$1</div>")
+              .replace(/^#### (.*?)$/gm, "<div class='text-[13px] font-bold text-slate-200 mt-1.5 mb-1'>$1</div>")
               .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-              .replace(/\n/g, "<br/>"),
+              .replace(/^(?:\*|-) (.*?)$/gm, "<div class='flex items-start gap-1.5 mt-0.5'><span class='text-blue-400 shrink-0'>•</span><span>$1</span></div>")
+              .replace(/\[(.*?)\]\((.*?)\)/g, "<a href='$2' target='_blank' rel='noreferrer' class='text-blue-400 hover:underline'>$1</a>")
+              .replace(/\n/g, "<br/>")
+              .replace(/<\/div><br\/>/g, "</div>"),
           }}
         />
-        <span className="text-[10px] text-slate-600 px-1">{fmt(msg.timestamp)}</span>
+
+        {/* Render Suggested Questions */}
+        {suggestions.length > 0 && (
+          <div className="flex flex-col gap-1.5 mt-1.5 w-full">
+            <span className="text-[10px] text-slate-400 font-medium px-1 mb-0.5 uppercase tracking-wider">Suggested Follow-ups:</span>
+            {suggestions.map((q, i) => (
+              <button
+                key={i}
+                onClick={() => onSuggestionClick && onSuggestionClick(q)}
+                className="text-[11px] text-left leading-snug px-3 py-1.5 rounded-lg border border-blue-500/20 bg-blue-500/5 text-blue-300 hover:bg-blue-500/15 hover:border-blue-500/30 transition-all w-fit cursor-pointer"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <span className="text-[10px] text-slate-600 px-1 mt-0.5">{fmt(msg.timestamp)}</span>
       </div>
     </motion.div>
   );
@@ -152,7 +191,7 @@ export function CompanyAIChatbot() {
     {
       id: uid(),
       role: "ai",
-      content: `Hello! I'm your **Company Intelligence AI** for **${companyName}**.\n\nAsk me anything about this company — culture, financials, tech stack, competitors, hiring velocity, and more. I'll answer based on our comprehensive dataset.`,
+      content: `Hello! I'm your **Company Intelligence AI** for **${companyName}**.\n\nAsk me anything about this company — culture, financials, tech stack, competitors, hiring velocity, and more. I'll answer based on our intelligence platform.`,
       timestamp: new Date(),
     },
   ]);
@@ -170,7 +209,7 @@ export function CompanyAIChatbot() {
       {
         id: uid(),
         role: "ai",
-        content: `Hello! I'm your **Company Intelligence AI** for **${companyName}**.\n\nAsk me anything about this company — culture, financials, tech stack, competitors, hiring velocity, and more. I'll answer based on our comprehensive dataset.`,
+        content: `Hello! I'm your **Company Intelligence AI** for **${companyName}**.\n\nAsk me anything about this company — culture, financials, tech stack, competitors, hiring velocity, and more. I'll answer based on our intelligence platform.`,
         timestamp: new Date(),
       },
     ]);
@@ -365,7 +404,7 @@ export function CompanyAIChatbot() {
                     style={{ minHeight: 0 }}
                   >
                     {messages.map((msg) => (
-                      <MessageBubble key={msg.id} msg={msg} />
+                      <MessageBubble key={msg.id} msg={msg} onSuggestionClick={sendMessage} />
                     ))}
 
                     {/* Thinking dots */}
@@ -438,7 +477,7 @@ export function CompanyAIChatbot() {
                       </button>
                     </div>
                     <p className="mt-1.5 text-center text-[10px] text-slate-700">
-                      Powered by Company Intelligence AI · Dataset: KITS Master
+                      Powered by Company Intelligence AI
                     </p>
                   </div>
                 </motion.div>

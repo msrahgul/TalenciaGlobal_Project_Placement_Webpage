@@ -49,7 +49,10 @@ function buildSystemPrompt(companyName: string): string {
     `Operations (Remote Policy, Working Hours, Transport Policy), ` +
     `Competitors & Strategy (Key Competitors, Competitive Advantages, Future Projections, Weaknesses). ` +
     `Rules: Base answers ONLY on the dataset. Acknowledge unavailable (NA) data honestly. ` +
-    `Use bullet points and **bold** for key metrics. Be direct and analytical — no filler.`
+    `Use bullet points and **bold** for key metrics. Be direct and analytical — no filler. ` +
+    `CRITICAL: At the very end of your response, ALWAYS provide exactly 3 suggested follow-up questions that the user could ask next. ` +
+    `Format these follow-up questions EXACTLY like this (with the triple dash):\n\n` +
+    `---\nSuggested questions:\n1. [Question 1]\n2. [Question 2]\n3. [Question 3]`
   );
 }
 
@@ -382,7 +385,7 @@ function buildDefaultSummary(company: Record<string, string>): string {
     `* **Glassdoor Rating**: ⭐ **${getVal("glassdoor_rating", "Glassdoor Rating")}**\n` +
     `* **Annual Revenue**: **${getVal("annual_revenue", "Annual Revenue")}**\n` +
     `* **Valuation**: **${getVal("valuation", "Valuation")}**\n\n` +
-    `*(Local Dataset Mode)*. You can ask me specific questions about **Culture**, **Tech Stack**, **Salary & Benefits**, **Competitors**, **Leadership**, **Layoffs**, or **Career Growth**.`
+    `You can ask me specific questions about **Culture**, **Tech Stack**, **Salary & Benefits**, **Competitors**, **Leadership**, **Layoffs**, or **Career Growth**.`
   );
 }
 
@@ -434,10 +437,24 @@ function generateLocalReply(company: Record<string, string>, query: string): str
 
   // If all fields in all matching sections were empty, fall back to default summary
   if (response.trim() === "") {
-    return buildDefaultSummary(company);
+    response = buildDefaultSummary(company);
   }
 
-  response += `*(Local Dataset Mode)*`;
+  // Always append suggested questions for local NLP fallback
+  const fallbackSuggestions = [
+    "What is the work culture like?",
+    "What's the tech stack used?",
+    "What are the salary & ESOP details?",
+    "How is the remote work policy?",
+    "What are the key competitors?",
+    "Tell me about job stability and layoffs."
+  ];
+  // Pick 3 random questions
+  const shuffled = fallbackSuggestions.sort(() => 0.5 - Math.random());
+  const selected = shuffled.slice(0, 3);
+  
+  response += `\n\n---\nSuggested questions:\n1. ${selected[0]}\n2. ${selected[1]}\n3. ${selected[2]}`;
+
   return response;
 }
 
@@ -507,7 +524,7 @@ export const chatWithGemini = createServerFn({ method: "POST" })
     const company = await findCompany(companyName);
     if (!company) {
       return {
-        reply: `🤖 *[Offline Dataset Mode]*\n\nI couldn't find detailed records for **${companyName}** in our local database. Please try again or check your query.`,
+        reply: `🤖 I couldn't find detailed records for **${companyName}**. Please try again or check your query.`,
       };
     }
     
