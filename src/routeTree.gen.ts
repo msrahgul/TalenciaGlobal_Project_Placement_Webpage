@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as CompanyRouteImport } from './routes/company'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CompanySkillsRouteImport } from './routes/company.skills'
 import { Route as CompanyIntelligenceRouteImport } from './routes/company.intelligence'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 
+const LeaderboardRoute = LeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CompanyRoute = CompanyRouteImport.update({
   id: '/company',
   path: '/company',
@@ -44,6 +50,7 @@ const ApiChatRoute = ApiChatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/company': typeof CompanyRouteWithChildren
+  '/leaderboard': typeof LeaderboardRoute
   '/api/chat': typeof ApiChatRoute
   '/company/intelligence': typeof CompanyIntelligenceRoute
   '/company/skills': typeof CompanySkillsRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/company': typeof CompanyRouteWithChildren
+  '/leaderboard': typeof LeaderboardRoute
   '/api/chat': typeof ApiChatRoute
   '/company/intelligence': typeof CompanyIntelligenceRoute
   '/company/skills': typeof CompanySkillsRoute
@@ -59,6 +67,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/company': typeof CompanyRouteWithChildren
+  '/leaderboard': typeof LeaderboardRoute
   '/api/chat': typeof ApiChatRoute
   '/company/intelligence': typeof CompanyIntelligenceRoute
   '/company/skills': typeof CompanySkillsRoute
@@ -68,6 +77,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/company'
+    | '/leaderboard'
     | '/api/chat'
     | '/company/intelligence'
     | '/company/skills'
@@ -75,6 +85,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/company'
+    | '/leaderboard'
     | '/api/chat'
     | '/company/intelligence'
     | '/company/skills'
@@ -82,6 +93,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/company'
+    | '/leaderboard'
     | '/api/chat'
     | '/company/intelligence'
     | '/company/skills'
@@ -90,11 +102,19 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CompanyRoute: typeof CompanyRouteWithChildren
+  LeaderboardRoute: typeof LeaderboardRoute
   ApiChatRoute: typeof ApiChatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/leaderboard': {
+      id: '/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof LeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/company': {
       id: '/company'
       path: '/company'
@@ -149,6 +169,7 @@ const CompanyRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CompanyRoute: CompanyRouteWithChildren,
+  LeaderboardRoute: LeaderboardRoute,
   ApiChatRoute: ApiChatRoute,
 }
 export const routeTree = rootRouteImport

@@ -12,9 +12,11 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { CompanyProvider } from "../context/CompanyContext";
+import { AuthProvider } from "../context/AuthContext";
 import { Toaster } from "../components/ui/sonner";
 import { TooltipProvider } from "../components/ui/tooltip";
-
+import { OnboardingModal } from "../components/OnboardingModal";
+import { UserNav } from "../components/UserNav";
 
 function NotFoundComponent() {
   return (
@@ -128,11 +130,16 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <CompanyProvider>
-
-          <Outlet />
-          <Toaster />
-        </CompanyProvider>
+        <AuthProvider>
+          <CompanyProvider>
+            <div className="fixed top-6 right-6 z-[60]">
+              <UserNav />
+            </div>
+            <Outlet />
+            <OnboardingModal />
+            <Toaster />
+          </CompanyProvider>
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

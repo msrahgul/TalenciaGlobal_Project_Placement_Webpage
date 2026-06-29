@@ -14,12 +14,14 @@ import {
   ArrowRight,
 } from "lucide-react";
 
+import { useAuth } from "@/context/AuthContext";
 import { useCompanies } from "@/lib/companyApi";
 import { type CompanySummary, getCategoryAccent, getCategoryHue } from "@/lib/companyData";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { useCompany } from "@/context/CompanyContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { DashboardWidget } from "@/components/DashboardWidget";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -769,6 +771,9 @@ const catShortName = (cat?: string | null): string => {
 function IndexPage() {
   const navigate = useNavigate();
   const { selectCompany } = useCompany();
+  const { user, signInWithGoogle } = useAuth();
+  const [isGuest, setIsGuest] = useState(false);
+
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "sector">("name");
   const [filterSector, setFilterSector] = useState<string | null>(null);
@@ -823,201 +828,288 @@ function IndexPage() {
     navigate({ to: "/company/intelligence" });
   };
 
+  const showHeroOnly = !user && !isGuest;
+
   return (
-    <div className="mesh-bg relative min-h-screen">
+    <div className={`mesh-bg relative ${showHeroOnly ? "h-screen overflow-hidden" : "min-h-screen"}`}>
       <div className="grid-bg absolute inset-0 z-0 pointer-events-none" />
       <PlacementNetworkBackground />
 
-
-      {/* ── HERO ─────────────────────────────────── */}
-      <header className="relative z-10">
-        <div className="relative mx-auto max-w-5xl px-6 pb-16 pt-24 sm:pt-32">
-          {/* Platform badge */}
+      <AnimatePresence mode="wait">
+        {showHeroOnly ? (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-7 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-[11px] font-medium text-muted-foreground backdrop-blur-sm"
+            key="hero"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, y: -40 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="relative z-10 flex flex-col items-center justify-center h-full w-full px-6 text-center"
           >
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-70" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
-            </span>
-            {COLLEGE_SHORT} · Placement Intelligence
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="mb-8 inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-slate-900/50 px-4 py-1.5 text-[12px] font-medium text-slate-300 backdrop-blur-md shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-500 opacity-70" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
+              </span>
+              {COLLEGE_SHORT} · Placement Intelligence Platform
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="font-heading text-[3.25rem] sm:text-[4.5rem] lg:text-[5.5rem] font-bold tracking-tight text-white leading-[1.05]"
+            >
+              Every recruiter at {COLLEGE_SHORT},
+              <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">in one quiet place.</span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="mt-8 max-w-2xl text-[16px] sm:text-[18px] leading-relaxed text-slate-400 font-medium"
+            >
+              Deep company intelligence, skill maps, and growth analytics — engineered for the
+              students and faculty of {COLLEGE_NAME}.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="mt-12 flex flex-col items-center gap-3 justify-center w-full max-w-sm mx-auto"
+            >
+              <Button
+                onClick={() => signInWithGoogle()}
+                className="w-full h-14 px-8 text-[15px] font-semibold rounded-2xl bg-white hover:bg-slate-100 text-slate-900 shadow-[0_0_32px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(255,255,255,0.4)] transition-all flex items-center justify-center gap-3"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                Sign in with Google
+              </Button>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+              className="mt-6 text-center"
+            >
+               <Button
+                type="button"
+                onClick={() => setIsGuest(true)}
+                variant="ghost"
+                className="text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-full px-6"
+               >
+                 Continue as Guest <ArrowRight className="w-4 h-4 ml-2" />
+               </Button>
+            </motion.div>
           </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
-            className="font-heading text-[2.5rem] font-semibold tracking-[-0.035em] text-foreground sm:text-[3.5rem] lg:text-[4.25rem] leading-[1.02]"
-          >
-            Every recruiter at {COLLEGE_SHORT},
-            <br />
-            <span className="text-muted-foreground">in one quiet place.</span>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="mt-6 max-w-xl text-[15px] leading-relaxed text-muted-foreground"
-          >
-            Deep company intelligence, skill maps, and growth analytics — engineered for the
-            students and faculty of {COLLEGE_NAME}.
-          </motion.p>
-
-          {/* Search bar & Sort Controls */}
+        ) : (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.24, ease: [0.22, 1, 0.36, 1] }}
-            className="mt-10 max-w-xl"
+            key="content"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6 }}
+            className="relative z-10 w-full"
           >
-            <div className="glass-search relative flex items-center px-5">
-              <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search companies, locations, categories…"
-                className="h-12 flex-1 border-0 bg-transparent px-3 text-[14px] text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0"
-              />
-              <AnimatePresence>
-                {query && (
-                  <motion.button
-                    type="button"
-                    initial={{ opacity: 0, scale: 0.7 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.7 }}
-                    transition={{ duration: 0.12 }}
-                    onClick={() => setQuery("")}
-                    className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    aria-label="Clear search"
+            <header className="relative mx-auto max-w-5xl px-6 pb-12 pt-16 sm:pt-24">
+              {!user && (
+                <div className="absolute top-6 right-6 z-50">
+                  <Button 
+                    onClick={() => setIsGuest(false)}
+                    className="rounded-full bg-blue-600/90 hover:bg-blue-500 text-white shadow-lg backdrop-blur-sm"
                   >
-                    <X className="h-3.5 w-3.5" />
-                  </motion.button>
-                )}
-              </AnimatePresence>
-            </div>
-            
-            <div className="mt-4 flex flex-col gap-3 px-1">
-              {/* Sort Controls */}
-              <div className="flex items-center gap-3 text-[13px] text-muted-foreground">
-                 <span className="font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Sort by:</span>
-                 <button 
-                   onClick={() => setSortBy("name")} 
-                   className={`px-3 py-1 rounded-full transition-colors border ${sortBy === "name" ? "bg-slate-800 text-slate-200 border-slate-700" : "bg-transparent border-transparent hover:bg-slate-800/50 hover:border-slate-800"}`}
-                 >
-                   Company Name
-                 </button>
-                 <button 
-                   onClick={() => setSortBy("sector")} 
-                   className={`px-3 py-1 rounded-full transition-colors border ${sortBy === "sector" ? "bg-slate-800 text-slate-200 border-slate-700" : "bg-transparent border-transparent hover:bg-slate-800/50 hover:border-slate-800"}`}
-                 >
-                   Industry Sector
-                 </button>
-              </div>
-
-              {/* Filter Controls */}
-              {sectors.length > 0 && (
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-1">
-                  <span className="font-semibold text-slate-500 uppercase tracking-wider text-[10px] mr-1 shrink-0">Filter:</span>
-                  <button
-                    onClick={() => setFilterSector(null)}
-                    className={`shrink-0 px-3 py-1 rounded-full text-[12px] font-medium transition-colors border ${filterSector === null ? "bg-slate-800 text-slate-200 border-slate-700 shadow-[0_0_12px_rgba(148,163,184,0.15)]" : "bg-transparent text-slate-400 border-slate-800/60 hover:bg-slate-800/50"}`}
-                  >
-                    All
-                  </button>
-                  {sectors.map((s) => {
-                    const isActive = filterSector === s;
-                    const accent = getCategoryAccent(s);
-                    const hue = getCategoryHue(s);
-                    
-                    return (
-                      <button
-                        key={s}
-                        onClick={() => setFilterSector(isActive ? null : s)}
-                        className={`group shrink-0 px-3 py-1 rounded-full text-[12px] font-medium transition-colors border ${isActive ? `${accent.badgeBg} ${accent.badgeText} ${accent.badgeBorder}` : "bg-transparent text-slate-400 border-slate-800/60 hover:bg-slate-800/50"}`}
-                        style={isActive ? { boxShadow: `0 0 12px hsla(${hue}, 80%, 60%, 0.2)` } : undefined}
-                      >
-                        {s}
-                      </button>
-                    );
-                  })}
+                    Sign In
+                  </Button>
                 </div>
               )}
-            </div>
-          </motion.div>
-        </div>
-      </header>
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-[11px] font-medium text-muted-foreground backdrop-blur-sm"
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-70" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
+                </span>
+                {COLLEGE_SHORT} · Placement Intelligence
+              </motion.div>
 
-      {/* ── MAIN CONTENT ─────────────────────────── */}
-      <main className="mx-auto max-w-7xl px-5 pb-24 sm:px-8 relative z-10">
+              <h1 className="font-heading text-[2.5rem] font-semibold tracking-[-0.035em] text-foreground sm:text-[3.5rem] leading-[1.02]">
+                Every recruiter at {COLLEGE_SHORT},
+                <br />
+                <span className="text-muted-foreground">in one quiet place.</span>
+              </h1>
+            </header>
 
-        {/* Thin divider between hero and content */}
-        <div className="border-t border-border mb-10" />
-
-        {/* Analytics Dashboard — only shown when data loaded */}
-        {!isLoading && !isError && companies.length > 0 && (
-          <HomepageAnalyticsDashboard companies={companies} />
-        )}
-
-        {/* Result count */}
-        {!isLoading && !isError && filtered.length > 0 && (
-          <p className="mb-5 text-[11px] font-semibold text-slate-500 tracking-wide">
-            {filtered.length} {filtered.length === 1 ? "company" : "companies"}
-          </p>
-        )}
-
-        {/* Company grid / states */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="relative overflow-hidden flex flex-col rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/60 to-slate-950/70 p-6 min-h-[248px] justify-between">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-700/40 to-transparent" />
-                <div className="flex items-start justify-between w-full">
-                  <div className="h-11 w-11 animate-pulse rounded-xl bg-slate-800/80" />
-                  <div className="h-5 w-14 animate-pulse rounded-lg bg-slate-800/60" />
+            <main className="mx-auto max-w-7xl px-5 pb-24 sm:px-8">
+              {user && (
+                <div className="mb-10">
+                  <DashboardWidget />
+                  <div className="border-t border-border mt-10 mb-10" />
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-heading font-bold text-white flex items-center gap-2">
+                      <Building2 className="w-5 h-5 text-blue-500" />
+                      Complete Companies Directory
+                    </h2>
+                  </div>
                 </div>
-                <div className="space-y-2 mt-4 flex-1">
-                  <div className="h-4 w-3/4 animate-pulse rounded bg-slate-800/70" />
-                  <div className="h-3 w-1/2 animate-pulse rounded bg-slate-800/40" />
+              )}
+              {!user && (
+                <div className="mb-10 flex items-center justify-between">
+                  <h2 className="text-xl font-heading font-bold text-white flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-blue-500" />
+                    Complete Companies Directory
+                  </h2>
                 </div>
-                <div className="grid grid-cols-2 gap-2 mt-4 w-full">
-                  <div className="h-9 animate-pulse rounded-xl bg-slate-800/40" />
-                  <div className="h-9 animate-pulse rounded-xl bg-slate-800/40" />
-                </div>
-                <div className="mt-5 pt-3 border-t border-slate-800/30 flex items-center justify-between w-full">
-                  <div className="h-3 w-24 animate-pulse rounded bg-slate-800/30" />
-                  <div className="h-3 w-12 animate-pulse rounded bg-slate-800/30" />
+              )}
+
+              {/* Filters and Search Bar moved down here */}
+              <div className="mb-8">
+                <div className="max-w-xl">
+                  <div className="glass-search relative flex items-center px-5">
+                    <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
+                    <Input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search companies, locations, categories…"
+                      className="h-12 flex-1 border-0 bg-transparent px-3 text-[14px] text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0"
+                    />
+                    <AnimatePresence>
+                      {query && (
+                        <motion.button
+                          type="button"
+                          initial={{ opacity: 0, scale: 0.7 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.7 }}
+                          transition={{ duration: 0.12 }}
+                          onClick={() => setQuery("")}
+                          className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </motion.button>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                  
+                  <div className="mt-4 flex flex-col gap-3 px-1">
+                    <div className="flex items-center gap-3 text-[13px] text-muted-foreground">
+                      <span className="font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Sort by:</span>
+                      <button 
+                        onClick={() => setSortBy("name")} 
+                        className={`px-3 py-1 rounded-full transition-colors border ${sortBy === "name" ? "bg-slate-800 text-slate-200 border-slate-700" : "bg-transparent border-transparent hover:bg-slate-800/50 hover:border-slate-800"}`}
+                      >
+                        Company Name
+                      </button>
+                      <button 
+                        onClick={() => setSortBy("sector")} 
+                        className={`px-3 py-1 rounded-full transition-colors border ${sortBy === "sector" ? "bg-slate-800 text-slate-200 border-slate-700" : "bg-transparent border-transparent hover:bg-slate-800/50 hover:border-slate-800"}`}
+                      >
+                        Industry Sector
+                      </button>
+                    </div>
+
+                    {sectors.length > 0 && (
+                      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-1">
+                        <span className="font-semibold text-slate-500 uppercase tracking-wider text-[10px] mr-1 shrink-0">Filter:</span>
+                        <button
+                          onClick={() => setFilterSector(null)}
+                          className={`shrink-0 px-3 py-1 rounded-full text-[12px] font-medium transition-colors border ${filterSector === null ? "bg-slate-800 text-slate-200 border-slate-700 shadow-[0_0_12px_rgba(148,163,184,0.15)]" : "bg-transparent text-slate-400 border-slate-800/60 hover:bg-slate-800/50"}`}
+                        >
+                          All
+                        </button>
+                        {sectors.map((s) => {
+                          const isActive = filterSector === s;
+                          const accent = getCategoryAccent(s);
+                          const hue = getCategoryHue(s);
+                          return (
+                            <button
+                              key={s}
+                              onClick={() => setFilterSector(isActive ? null : s)}
+                              className={`group shrink-0 px-3 py-1 rounded-full text-[12px] font-medium transition-colors border ${isActive ? `${accent.badgeBg} ${accent.badgeText} ${accent.badgeBorder}` : "bg-transparent text-slate-400 border-slate-800/60 hover:bg-slate-800/50"}`}
+                              style={isActive ? { boxShadow: `0 0 12px hsla(${hue}, 80%, 60%, 0.2)` } : undefined}
+                            >
+                              {s}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : isError ? (
-          <div className="rounded-2xl border border-slate-800/50 bg-slate-900/40 p-16 text-center">
-            <Building2 className="mx-auto mb-4 h-9 w-9 text-slate-700" />
-            <p className="text-sm font-medium text-slate-400">Failed to load companies.</p>
-            <Button variant="outline" className="mt-5 rounded-full border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600" onClick={() => refetch()}>
-              Try again
-            </Button>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-slate-800/50 bg-slate-900/40 p-16 text-center">
-            <Search className="mx-auto mb-4 h-9 w-9 text-slate-700" />
-            <p className="text-sm font-medium text-slate-500">No companies match your search.</p>
-            <Button variant="outline" className="mt-5 rounded-full border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600" onClick={() => setQuery("")}>
-              Clear search
-            </Button>
-          </div>
-        ) : (
-          <div className="company-grid grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map((c, i) => (
-              <CompanyCard key={c.company_id} company={c} onSelect={handleSelect} index={i} />
-            ))}
-          </div>
+
+              {!isLoading && !isError && companies.length > 0 && !user && (
+                <HomepageAnalyticsDashboard companies={companies} />
+              )}
+
+              {!isLoading && !isError && filtered.length > 0 && (
+                <p className="mb-5 text-[11px] font-semibold text-slate-500 tracking-wide">
+                  {filtered.length} {filtered.length === 1 ? "company" : "companies"}
+                </p>
+              )}
+
+              {isLoading ? (
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="relative overflow-hidden flex flex-col rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/60 to-slate-950/70 p-6 min-h-[248px] justify-between">
+                      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-700/40 to-transparent" />
+                      <div className="flex items-start justify-between w-full">
+                        <div className="h-11 w-11 animate-pulse rounded-xl bg-slate-800/80" />
+                        <div className="h-5 w-14 animate-pulse rounded-lg bg-slate-800/60" />
+                      </div>
+                      <div className="space-y-2 mt-4 flex-1">
+                        <div className="h-4 w-3/4 animate-pulse rounded bg-slate-800/70" />
+                        <div className="h-3 w-1/2 animate-pulse rounded bg-slate-800/40" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mt-4 w-full">
+                        <div className="h-9 animate-pulse rounded-xl bg-slate-800/40" />
+                        <div className="h-9 animate-pulse rounded-xl bg-slate-800/40" />
+                      </div>
+                      <div className="mt-5 pt-3 border-t border-slate-800/30 flex items-center justify-between w-full">
+                        <div className="h-3 w-24 animate-pulse rounded bg-slate-800/30" />
+                        <div className="h-3 w-12 animate-pulse rounded bg-slate-800/30" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : isError ? (
+                <div className="rounded-2xl border border-slate-800/50 bg-slate-900/40 p-16 text-center">
+                  <Building2 className="mx-auto mb-4 h-9 w-9 text-slate-700" />
+                  <p className="text-sm font-medium text-slate-400">Failed to load companies.</p>
+                  <Button variant="outline" className="mt-5 rounded-full border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600" onClick={() => refetch()}>
+                    Try again
+                  </Button>
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="rounded-2xl border border-slate-800/50 bg-slate-900/40 p-16 text-center">
+                  <Search className="mx-auto mb-4 h-9 w-9 text-slate-700" />
+                  <p className="text-sm font-medium text-slate-500">No companies match your search.</p>
+                  <Button variant="outline" className="mt-5 rounded-full border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600" onClick={() => setQuery("")}>
+                    Clear search
+                  </Button>
+                </div>
+              ) : (
+                <div className="company-grid grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {filtered.map((c, i) => (
+                    <CompanyCard key={c.company_id} company={c} onSelect={handleSelect} index={i} />
+                  ))}
+                </div>
+              )}
+            </main>
+          </motion.div>
         )}
-      </main>
+      </AnimatePresence>
     </div>
   );
 }
