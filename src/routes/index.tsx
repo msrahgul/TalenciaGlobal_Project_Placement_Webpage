@@ -771,8 +771,14 @@ const catShortName = (cat?: string | null): string => {
 function IndexPage() {
   const navigate = useNavigate();
   const { selectCompany } = useCompany();
-  const { user, signInWithGoogle } = useAuth();
+  const { user, signInWithGoogle, isAdmin } = useAuth();
   const [isGuest, setIsGuest] = useState(false);
+
+  useEffect(() => {
+    if (isAdmin) {
+      navigate({ to: "/admin/dashboard", replace: true });
+    }
+  }, [isAdmin, navigate]);
 
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "sector">("name");

@@ -13,8 +13,10 @@ import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as CompanyRouteImport } from './routes/company'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CompanySkillsRouteImport } from './routes/company.skills'
+import { Route as CompanyLeaderboardRouteImport } from './routes/company.leaderboard'
 import { Route as CompanyIntelligenceRouteImport } from './routes/company.intelligence'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 
 const LeaderboardRoute = LeaderboardRouteImport.update({
   id: '/leaderboard',
@@ -36,6 +38,11 @@ const CompanySkillsRoute = CompanySkillsRouteImport.update({
   path: '/skills',
   getParentRoute: () => CompanyRoute,
 } as any)
+const CompanyLeaderboardRoute = CompanyLeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => CompanyRoute,
+} as any)
 const CompanyIntelligenceRoute = CompanyIntelligenceRouteImport.update({
   id: '/intelligence',
   path: '/intelligence',
@@ -46,21 +53,30 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/admin/dashboard',
+  path: '/admin/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/company': typeof CompanyRouteWithChildren
   '/leaderboard': typeof LeaderboardRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/api/chat': typeof ApiChatRoute
   '/company/intelligence': typeof CompanyIntelligenceRoute
+  '/company/leaderboard': typeof CompanyLeaderboardRoute
   '/company/skills': typeof CompanySkillsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/company': typeof CompanyRouteWithChildren
   '/leaderboard': typeof LeaderboardRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/api/chat': typeof ApiChatRoute
   '/company/intelligence': typeof CompanyIntelligenceRoute
+  '/company/leaderboard': typeof CompanyLeaderboardRoute
   '/company/skills': typeof CompanySkillsRoute
 }
 export interface FileRoutesById {
@@ -68,8 +84,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/company': typeof CompanyRouteWithChildren
   '/leaderboard': typeof LeaderboardRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/api/chat': typeof ApiChatRoute
   '/company/intelligence': typeof CompanyIntelligenceRoute
+  '/company/leaderboard': typeof CompanyLeaderboardRoute
   '/company/skills': typeof CompanySkillsRoute
 }
 export interface FileRouteTypes {
@@ -78,24 +96,30 @@ export interface FileRouteTypes {
     | '/'
     | '/company'
     | '/leaderboard'
+    | '/admin/dashboard'
     | '/api/chat'
     | '/company/intelligence'
+    | '/company/leaderboard'
     | '/company/skills'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/company'
     | '/leaderboard'
+    | '/admin/dashboard'
     | '/api/chat'
     | '/company/intelligence'
+    | '/company/leaderboard'
     | '/company/skills'
   id:
     | '__root__'
     | '/'
     | '/company'
     | '/leaderboard'
+    | '/admin/dashboard'
     | '/api/chat'
     | '/company/intelligence'
+    | '/company/leaderboard'
     | '/company/skills'
   fileRoutesById: FileRoutesById
 }
@@ -103,6 +127,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CompanyRoute: typeof CompanyRouteWithChildren
   LeaderboardRoute: typeof LeaderboardRoute
+  AdminDashboardRoute: typeof AdminDashboardRoute
   ApiChatRoute: typeof ApiChatRoute
 }
 
@@ -136,6 +161,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompanySkillsRouteImport
       parentRoute: typeof CompanyRoute
     }
+    '/company/leaderboard': {
+      id: '/company/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/company/leaderboard'
+      preLoaderRoute: typeof CompanyLeaderboardRouteImport
+      parentRoute: typeof CompanyRoute
+    }
     '/company/intelligence': {
       id: '/company/intelligence'
       path: '/intelligence'
@@ -150,16 +182,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/admin/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface CompanyRouteChildren {
   CompanyIntelligenceRoute: typeof CompanyIntelligenceRoute
+  CompanyLeaderboardRoute: typeof CompanyLeaderboardRoute
   CompanySkillsRoute: typeof CompanySkillsRoute
 }
 
 const CompanyRouteChildren: CompanyRouteChildren = {
   CompanyIntelligenceRoute: CompanyIntelligenceRoute,
+  CompanyLeaderboardRoute: CompanyLeaderboardRoute,
   CompanySkillsRoute: CompanySkillsRoute,
 }
 
@@ -170,6 +211,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CompanyRoute: CompanyRouteWithChildren,
   LeaderboardRoute: LeaderboardRoute,
+  AdminDashboardRoute: AdminDashboardRoute,
   ApiChatRoute: ApiChatRoute,
 }
 export const routeTree = rootRouteImport

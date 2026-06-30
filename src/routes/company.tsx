@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, useState, memo, useRef } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, Building2, GraduationCap, Globe, Building, Briefcase } from "lucide-react";
+import { ChevronLeft, Building2, GraduationCap, Globe, Building, Briefcase, Users } from "lucide-react";
 
 import { useCompany, readStoredCompany } from "@/context/CompanyContext";
 import { CompanyLogo } from "@/components/CompanyLogo";
@@ -338,6 +338,18 @@ function CompanyLayout() {
                   <GraduationCap className="h-3.5 w-3.5" />
                 </motion.div>
                 <span>Skills</span>
+              </Link>
+              <Link
+                to="/company/leaderboard"
+                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs transition-all cursor-pointer ${pathname === "/company/leaderboard"
+                  ? activeClass
+                  : "text-slate-400 hover:text-slate-200 border border-transparent font-medium"
+                  }`}
+              >
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
+                  <Users className="h-3.5 w-3.5" />
+                </motion.div>
+                <span>Leaderboard</span>
               </Link>
             </div>
           </div>

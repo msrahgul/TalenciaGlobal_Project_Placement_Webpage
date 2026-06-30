@@ -26,7 +26,7 @@ export const INDUSTRY_SECTORS = [
 ];
 
 export function OnboardingModal() {
-  const { user, profile, isLoading, refreshProfile } = useAuth();
+  const { user, profile, isLoading, refreshProfile, isAdmin } = useAuth();
   const [skills, setSkills] = useState<SkillMaster[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
@@ -43,12 +43,12 @@ export function OnboardingModal() {
         setSkills(data as SkillMaster[]);
       }
     }
-    if (user && !profile && !isLoading) {
+    if (user && !profile && !isLoading && !isAdmin) {
       fetchSkills();
     }
-  }, [user, profile, isLoading]);
+  }, [user, profile, isLoading, isAdmin]);
 
-  if (isLoading || !user || profile) {
+  if (isLoading || !user || profile || isAdmin) {
     return null;
   }
 

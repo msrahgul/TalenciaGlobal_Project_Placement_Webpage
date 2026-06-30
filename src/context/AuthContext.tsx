@@ -18,12 +18,15 @@ interface AuthContextType {
   user: User | null;
   profile: StudentProfile | null;
   isLoading: boolean;
+  isAdmin: boolean;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const ADMIN_EMAIL = "msrahgul@gmail.com";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -63,8 +66,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         const email = session.user.email || "";
         
-        // Strict Domain Restricting Policy
-        if (!email.endsWith("@karunya.edu.in")) {
+        // Allow the master admin account through regardless of domain.
+        // All other accounts must use the @karunya.edu.in institutional domain.
+        const isAdminEmail = email === ADMIN_EMAIL;
+        const isKarunyaDomain = email.endsWith("@karunya.edu.in");
+
+        if (!isAdminEmail && !isKarunyaDomain) {
           toast.error("Unauthorized Account", {
             description: "Please use your @karunya.edu.in account to access this platform.",
             duration: 5000,
@@ -102,8 +109,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       provider: "google",
       options: {
         redirectTo: window.location.origin,
+        // NOTE: The `hd` param restricts the Google account-picker UI to
+        // @karunya.edu.in, but does NOT prevent msrahgul@gmail.com from
+        // manually choosing "Use another account". The domain check above
+        // is the authoritative gate.
         queryParams: {
-          hd: 'karunya.edu.in' // Enforce hosted domain selection at Google login
+          hd: 'karunya.edu.in'
         }
       },
     });
@@ -129,8 +140,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const isAdmin = user?.email === ADMIN_EMAIL;
+
   return (
-    <AuthContext.Provider value={{ user, profile, isLoading, signInWithGoogle, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, isLoading, isAdmin, signInWithGoogle, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
