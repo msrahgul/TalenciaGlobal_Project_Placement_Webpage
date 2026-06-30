@@ -1,0 +1,8 @@
+[build]
+  # Force npm to install without strictly adhering to the Windows-generated package-lock.json
+  # which causes EBADPLATFORM for OS-specific optional dependencies like Rolldown bindings on Linux.
+  command = "npm install --no-package-lock && npm run build"
+  publish = ".netlify/public"
+
+[build.environment]
+  NODE_VERSION = "22"
