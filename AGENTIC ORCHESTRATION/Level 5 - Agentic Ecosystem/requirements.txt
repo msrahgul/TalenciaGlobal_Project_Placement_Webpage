@@ -1,0 +1,12 @@
+# Python 3.11 through 3.14 all work: every pin below ships prebuilt wheels for
+# each of those versions, so `pip install` never needs a C/Rust compiler.
+langchain==0.3.14
+langchain-openai==0.2.14
+langchain-groq==0.2.3
+langchain-google-genai==2.0.8
+langgraph==0.2.62
+pydantic==2.13.4          # 2.10.4 had no cp314 wheel; 2.13.4 does (and works on 3.11-3.13 too)
+psycopg2-binary==2.9.12   # 2.9.10 had no cp314 wheel; 2.9.12 does
+python-dotenv==1.0.1
+openpyxl==3.1.5
+pytest==8.3.4

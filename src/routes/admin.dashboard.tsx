@@ -24,6 +24,7 @@ import { useCompanies } from "@/lib/companyApi";
 import { STAGES, STAGE_INDEX } from "@/components/CompanyPreparationTracker";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { AgenticResearchPanel } from "@/components/AgenticResearchPanel";
 
 // ── Route Guard ────────────────────────────────────────────────────────────
 export const Route = createFileRoute("/admin/dashboard")({
@@ -595,6 +596,12 @@ function AdminDashboard() {
             </div>
           )}
         </div>
+
+        {/* ── AI Research Pipeline Panel ──────────────────────────────── */}
+        <AgenticResearchPanel
+          companyName="Blinkit" // Or another default if needed, or allow selecting
+          companyId={117}
+        />
       </div>
     </div>
   );

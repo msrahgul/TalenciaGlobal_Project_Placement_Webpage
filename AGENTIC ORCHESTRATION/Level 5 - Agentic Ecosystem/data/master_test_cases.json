@@ -1,0 +1,212 @@
+[
+  {
+    "case_id": "MC-001",
+    "title": "Required field is not blank",
+    "applies_when": "nullable == False",
+    "rule_id": "not_blank",
+    "severity": "error",
+    "description": "Non-nullable parameters must contain a value.",
+    "example_pass": "Accenture plc",
+    "example_fail": ""
+  },
+  {
+    "case_id": "MC-002",
+    "title": "Required field is not a placeholder",
+    "applies_when": "nullable == False",
+    "rule_id": "not_placeholder",
+    "severity": "error",
+    "description": "Non-nullable parameters must not be 'Not Found', 'N/A', 'Unknown', etc.",
+    "example_pass": "Dublin, Ireland",
+    "example_fail": "Not Found"
+  },
+  {
+    "case_id": "MC-003",
+    "title": "Atomic field has no delimiter",
+    "applies_when": "ac == 'Atomic'",
+    "rule_id": "atomic_no_delimiter",
+    "severity": "error",
+    "description": "Atomic parameters must be a single value with no ';' delimiter.",
+    "example_pass": "Public",
+    "example_fail": "Public; Private"
+  },
+  {
+    "case_id": "MC-004",
+    "title": "Atomic field length is sane",
+    "applies_when": "ac == 'Atomic'",
+    "rule_id": "atomic_max_length",
+    "severity": "warning",
+    "description": "Atomic values should not be paragraph-length (<= 2000 chars).",
+    "example_pass": "Profitable",
+    "example_fail": "<a 5000 character essay>"
+  },
+  {
+    "case_id": "MC-010",
+    "title": "Composite meets minimum element count",
+    "applies_when": "ac == 'Composite'",
+    "rule_id": "composite_min_count",
+    "severity": "error",
+    "description": "Composite parameters must contain at least 'min' elements.",
+    "example_pass": "A; B; C; D; E",
+    "example_fail": "A; B"
+  },
+  {
+    "case_id": "MC-011",
+    "title": "Composite respects maximum element count",
+    "applies_when": "ac == 'Composite'",
+    "rule_id": "composite_max_count",
+    "severity": "error",
+    "description": "Composite parameters must contain at most 'max' elements.",
+    "example_pass": "A; B; C",
+    "example_fail": "A; B; C; D; E; F; G; H; I; J; K"
+  },
+  {
+    "case_id": "MC-012",
+    "title": "Composite has no empty elements",
+    "applies_when": "ac == 'Composite'",
+    "rule_id": "composite_elements_nonempty",
+    "severity": "error",
+    "description": "No empty values between delimiters (e.g. 'A;; B').",
+    "example_pass": "A; B; C",
+    "example_fail": "A; ; C"
+  },
+  {
+    "case_id": "MC-013",
+    "title": "Composite has no trailing delimiter",
+    "applies_when": "ac == 'Composite'",
+    "rule_id": "composite_no_trailing_delimiter",
+    "severity": "warning",
+    "description": "Composite values should not end with a stray ';'.",
+    "example_pass": "A; B; C",
+    "example_fail": "A; B; C;"
+  },
+  {
+    "case_id": "MC-014",
+    "title": "Composite element length is sane",
+    "applies_when": "ac == 'Composite'",
+    "rule_id": "composite_max_element_length",
+    "severity": "warning",
+    "description": "Each composite element should be concise (<= 300 chars).",
+    "example_pass": "AWS; Azure; GCP",
+    "example_fail": "<a 600 character element>"
+  },
+  {
+    "case_id": "MC-020",
+    "title": "Value is single-line (no newlines)",
+    "applies_when": "True",
+    "rule_id": "no_newlines",
+    "severity": "error",
+    "description": "Cells must be single-line so they paste cleanly into Excel/CSV.",
+    "example_pass": "A; B; C",
+    "example_fail": "A\nB\nC"
+  },
+  {
+    "case_id": "MC-021",
+    "title": "Value has no bullet/numbered markers",
+    "applies_when": "True",
+    "rule_id": "no_bullets",
+    "severity": "warning",
+    "description": "No '- ', '* ', bullet, or '1. ' list markers inside a cell.",
+    "example_pass": "A; B; C",
+    "example_fail": "- A - B - C"
+  },
+  {
+    "case_id": "MC-022",
+    "title": "Value has no leading/trailing whitespace",
+    "applies_when": "True",
+    "rule_id": "no_leading_trailing_space",
+    "severity": "warning",
+    "description": "Values must be trimmed.",
+    "example_pass": "Hybrid",
+    "example_fail": "  Hybrid  "
+  },
+  {
+    "case_id": "MC-023",
+    "title": "Value has no double spaces",
+    "applies_when": "True",
+    "rule_id": "no_double_space",
+    "severity": "warning",
+    "description": "No accidental double spacing.",
+    "example_pass": "Field Sales",
+    "example_fail": "Field  Sales"
+  },
+  {
+    "case_id": "MC-024",
+    "title": "Value has alphanumeric content",
+    "applies_when": "True",
+    "rule_id": "not_only_punctuation",
+    "severity": "error",
+    "description": "A value cannot be only punctuation/symbols.",
+    "example_pass": "60%",
+    "example_fail": "--;--"
+  },
+  {
+    "case_id": "MC-025",
+    "title": "Value length is within hard cap",
+    "applies_when": "True",
+    "rule_id": "string_max_length",
+    "severity": "error",
+    "description": "No single cell may exceed 8000 characters.",
+    "example_pass": "Profitable",
+    "example_fail": "<an 8001 character blob>"
+  },
+  {
+    "case_id": "MC-030",
+    "title": "URL fields are well-formed",
+    "applies_when": "data_type == 'url'",
+    "rule_id": "url_shape",
+    "severity": "error",
+    "description": "URL parameters must start with http:// or https:// and contain no spaces.",
+    "example_pass": "https://www.accenture.com",
+    "example_fail": "accenture dot com"
+  },
+  {
+    "case_id": "MC-031",
+    "title": "Email fields are well-formed",
+    "applies_when": "data_type == 'email'",
+    "rule_id": "email_shape",
+    "severity": "error",
+    "description": "Email parameters must look like name@domain.tld.",
+    "example_pass": "contact@accenture.com",
+    "example_fail": "contact[at]accenture"
+  },
+  {
+    "case_id": "MC-032",
+    "title": "Phone fields look like phone numbers",
+    "applies_when": "data_type == 'phone'",
+    "rule_id": "phone_shape",
+    "severity": "warning",
+    "description": "Phone parameters must contain at least 7 digits.",
+    "example_pass": "+1 555 123 4567",
+    "example_fail": "call us"
+  },
+  {
+    "case_id": "MC-033",
+    "title": "Numeric fields contain a number",
+    "applies_when": "data_type == 'number'",
+    "rule_id": "number_shape",
+    "severity": "warning",
+    "description": "Numeric parameters must contain at least one digit.",
+    "example_pass": "15000000",
+    "example_fail": "many"
+  },
+  {
+    "case_id": "MC-034",
+    "title": "Ratings are within 0-10",
+    "applies_when": "data_type == 'rating'",
+    "rule_id": "rating_range_0_10",
+    "severity": "error",
+    "description": "Rating parameters must be a number between 0 and 10.",
+    "example_pass": "4.2",
+    "example_fail": "55"
+  },
+  {
+    "case_id": "MC-040",
+    "title": "Enum value is in the allowed set",
+    "applies_when": "allowed_values != []",
+    "rule_id": "enum_in_allowed",
+    "severity": "error",
+    "description": "When a parameter defines allowed_values, the value must be one of them.",
+    "example_pass": "Public",
+    "example_fail": "SomethingElse"
+  }
+]
